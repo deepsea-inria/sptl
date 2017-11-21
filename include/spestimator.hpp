@@ -3,6 +3,9 @@
 #include <string>
 #include <atomic>
 #include <map>
+#include <sstream>
+#include <stdio.h>
+#include <iostream>
 
 #include "spperworker.hpp"
 #include "sptime.hpp"
