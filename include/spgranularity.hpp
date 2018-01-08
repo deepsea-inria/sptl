@@ -72,21 +72,8 @@ namespace sptl {
       Force_sequential = 1,
       Sequential = 2,
       Parallel = 3,
-      Unknown_sequential = 4,
-      Unknown_parallel = 5
+      Unknown = 4
     };
-
-    // `p` configuration of caller; `c` callee
-    static inline
-    execmode_type execmode_combine(execmode_type p, execmode_type c) {
-      // callee gives priority to caller when caller is Sequential
-      if (p == Sequential) {
-        return Sequential;
-      }
-      
-      // otherwise, callee takes priority
-      return c;
-    }
     
     template <class Item>
     using perworker_type = perworker::array<Item>;
@@ -101,6 +88,36 @@ namespace sptl {
     execmode_type& my_execmode() {
       return execmode.mine().back();
     }
+
+    // `p` configuration of caller; `c` callee
+    static inline
+    execmode_type execmode_combine(execmode_type p, execmode_type c) {
+      // callee gives priority to caller when caller is Sequential
+      if (p == Sequential) {
+        return Sequential;
+      }
+      
+      // otherwise, callee takes priority
+      return c;
+    }
+
+    /*---------------------------------------------------------------------*/
+    /* Fork-join primitive */
+
+    template <class Body_fct1, class Body_fct2>
+    void primitive_fork2(const Body_fct1& f1, const Body_fct2& f2) {
+#if defined(USE_CILK_PLUS_RUNTIME)
+      cilk_spawn f1();
+      f2();
+      cilk_sync;
+#else
+      f1();
+      f2();
+#endif
+    }
+
+    /*---------------------------------------------------------------------*/
+    /* Series-parallel guard */
 
     template <class Body_fct>
     void spguard_sequential(execmode_type c, const Body_fct& body_fct) {
@@ -317,7 +334,8 @@ namespace sptl {
     control_by_prediction controller_holder<method_name, id, Types ...>::controller(std::string("controller_holder_") + std::string(method_name) + "_" + std::to_string(id) + "_" + type_name<Types ...>());
     
     // controlled statement with built in estimators
-    constexpr char default_name[] = "auto";
+    constexpr
+    char default_name[] = "auto";
 
     template <
       class Par_complexity_measure_fct,
@@ -331,8 +349,7 @@ namespace sptl {
                const Seq_body_fct& seq_body_fct) {
       using controller_type = controller_holder<default_name, 1, Par_complexity_measure_fct, Seq_complexity_measure_fct, Par_body_fct, Seq_body_fct>;
       spguard(controller_type::controller, par_complexity_measure_fct, seq_complexity_measure_fct, par_body_fct, seq_body_fct);
-    }
-    
+    }    
     
     template <
       class Complexity_measure_fct,
@@ -473,12 +490,12 @@ namespace sptl {
     
     template <class Body_fct1, class Body_fct2>
     void fork2(const Body_fct1& f1, const Body_fct2& f2) {
-#if defined(PCTL_SEQUENTIAL_ELISION) || defined(PCTL_SEQUENTIAL_BASELINE)
+#if defined(SPTL_SEQUENTIAL_ELISION) || defined(SPTL_SEQUENTIAL_BASELINE)
       f1();
       f2();
       return;
 #endif
-#if defined(PCTL_PARALLEL_ELISION)
+#if defined(SPTL_PARALLEL_ELISION)
       primitive_fork2(f1, f2);
       return;
 #endif
