@@ -27,8 +27,10 @@ public:
 /*---------------------------------------------------------------------*/
 /* Buffer in which to store callbacks */
 
-/* It's important that this structure be simple, because the structure
- * is used during link-load time. 
+/* It's important that the callback storage be simple, because the
+ * structure is initialized during link-load time. Use of malloc/free
+ * may crash the program. As such, we store callback objects in a
+ * fixed-capacity array.
  */
 
 static constexpr
@@ -68,7 +70,9 @@ public:
   }
 
 };
-
+    
+// all callbacks to be stored in this object
+    
 myset<client*> callbacks;
 
 /*---------------------------------------------------------------------*/
