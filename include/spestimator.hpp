@@ -19,44 +19,47 @@ using complexity_type = double;
   
 using cost_type = double;
 
-namespace complexity {
-
-// A `tiny` complexity forces sequential execution
-static constexpr
-complexity_type tiny = (complexity_type) (-1l);
-
-// An `undefined` complexity indicates that the value hasn't been computed yet
-static constexpr
-complexity_type undefined = (complexity_type) (-2l);
+  /*---------------------------------------------------------------------*/
+  /* Special complexity values */
   
-} // end namespace
+  namespace complexity {
 
-namespace cost {
+    // A `tiny` complexity forces sequential execution
+    static constexpr
+    complexity_type tiny = (complexity_type) (-1l);
 
-//! an `undefined` execution time indicates that the value hasn't been computed yet
-static constexpr
-cost_type undefined = -1.0;
+    // An `undefined` complexity indicates that the value hasn't been computed yet
+    static constexpr
+    complexity_type undefined = (complexity_type) (-2l);
+  
+  } // end namespace
 
-//! an `unknown` execution time forces parallel execution
-static constexpr
-cost_type unknown = -2.0;
+  /*---------------------------------------------------------------------*/
+  /* Special cost values */
 
-//! a `tiny` execution time forces sequential execution, and skips time measures
-static constexpr
-cost_type tiny = -3.0;
+  namespace cost {
 
-//! a `pessimistic` cost is 1 microsecond per unit of complexity
-static constexpr
-cost_type pessimistic = std::numeric_limits<double>::infinity();
-} // end namespace
+    //! an `undefined` execution time indicates that the value hasn't been computed yet
+    static constexpr
+    cost_type undefined = -1.0;
+    
+    //! an `unknown` execution time forces parallel execution
+    static constexpr
+    cost_type unknown = -2.0;
 
-cost_type kappa = 100;
+    //! a `tiny` execution time forces sequential execution, and skips time measures
+    static constexpr
+    cost_type tiny = -3.0;
 
-double update_size_ratio = 1.5; // aka alpha
+    //! a `pessimistic` cost is 1 microsecond per unit of complexity
+    static constexpr
+    cost_type pessimistic = std::numeric_limits<double>::infinity();
+    
+  } // end namespace
 
-template <class Item>
-using perworker_type = perworker::array<Item>;
-
+/*---------------------------------------------------------------------*/
+/* File IO for reading/writing estimator values */
+  
 namespace {
 
 using constant_map_type = std::map<std::string, double>;
@@ -140,6 +143,16 @@ void try_write_constants_to_file() {
 }
 
 } // end namespace
+
+/*---------------------------------------------------------------------*/
+/* The estimator data structure */
+  
+cost_type kappa = 100;
+
+double update_size_ratio = 1.5; // aka alpha
+
+template <class Item>
+using perworker_type = perworker::array<Item>;
 
 class estimator : public callback::client {
 //private:
@@ -262,16 +275,12 @@ public:
     init();
   }
 
-  estimator(std::string name)
-    : shared_info(0)
-  {
-//  : name(name.substr(0, std::min(40, (int)name.length()))) {
+  estimator(std::string name) : shared_info(0) {
     std::stringstream stream;
     stream << name.substr(0, std::min(40, (int)name.length())) << this;
     this->name = stream.str();
     init();
-//    this->name = name.substr(0, std::min(40, (int)name.length()));
-    pasl::pctl::callback::register_client(this);
+    callback::register_client(this);
   }
 
   std::string get_name() {
@@ -281,10 +290,6 @@ public:
   bool is_undefined() {
     return shared_info.load() == 0;
   }
-
-  bool locally_undefined() {
-    return false;
-  }                        
 
   void report(complexity_type complexity, cost_type elapsed, bool forced) {
     double local_ticks_per_microsecond = machine::cpu_frequency_ghz * 1000.0;
