@@ -11,7 +11,7 @@ namespace sptl {
   
 namespace range {
 
-  template <
+template <
   class Iter,
   class Body,
   class Comp_rng,
@@ -69,7 +69,7 @@ void parallel_for(Iter lo, Iter hi, const Comp& comp, const Body& body);
 template <class Iter, class Body>
 void parallel_for(Iter lo, Iter hi, const Body& body) {
   auto comp_rng = [&] (Iter lo, Iter hi) {
-    return (long)(hi - lo);
+    return (size_t)(hi - lo);
   };
   range::parallel_for(lo, hi, comp_rng, body);
 }
