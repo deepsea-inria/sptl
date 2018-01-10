@@ -19,43 +19,20 @@ using complexity_type = double;
   
 using cost_type = double;
 
-  /*---------------------------------------------------------------------*/
-  /* Special complexity values */
-  
-  namespace complexity {
+/*---------------------------------------------------------------------*/
+/* Special cost values */
 
-    // A `tiny` complexity forces sequential execution
-    static constexpr
-    complexity_type tiny = (complexity_type) (-1l);
+namespace cost {
 
-    // An `undefined` complexity indicates that the value hasn't been computed yet
-    static constexpr
-    complexity_type undefined = (complexity_type) (-2l);
-  
-  } // end namespace
+  //! an `undefined` execution time indicates that the value hasn't been computed yet
+  static constexpr
+  cost_type undefined = -1.0;
 
-  /*---------------------------------------------------------------------*/
-  /* Special cost values */
+  //! a `pessimistic` cost is 1 microsecond per unit of complexity
+  static constexpr
+  cost_type pessimistic = std::numeric_limits<double>::infinity();
 
-  namespace cost {
-
-    //! an `undefined` execution time indicates that the value hasn't been computed yet
-    static constexpr
-    cost_type undefined = -1.0;
-    
-    //! an `unknown` execution time forces parallel execution
-    static constexpr
-    cost_type unknown = -2.0;
-
-    //! a `tiny` execution time forces sequential execution, and skips time measures
-    static constexpr
-    cost_type tiny = -3.0;
-
-    //! a `pessimistic` cost is 1 microsecond per unit of complexity
-    static constexpr
-    cost_type pessimistic = std::numeric_limits<double>::infinity();
-    
-  } // end namespace
+} // end namespace
 
 /*---------------------------------------------------------------------*/
 /* File IO for reading/writing estimator values */
@@ -92,10 +69,11 @@ std::string get_dflt_constant_path() {
 static
 std::string get_path_to_constants_file_from_cmdline(std::string flag) {
   std::string outfile;
-  if (deepsea::cmdline::parse_or_default_bool(flag, false, false))
+  if (deepsea::cmdline::parse_or_default_bool(flag, false, false)) {
     return get_dflt_constant_path();
-  else
+  } else {
     return deepsea::cmdline::parse_or_default_string(flag + "_in", "", false);
+  }
 }
 
 static
@@ -108,8 +86,9 @@ void try_read_constants_from_file() {
   }
   loaded = true;
   std::string infile_path = get_dflt_constant_path();
-  if (infile_path == "")
+  if (infile_path == "") {
     return;
+  }
   std::string cst_str;
   std::ifstream infile;
   infile.open (infile_path.c_str());
@@ -119,8 +98,9 @@ void try_read_constants_from_file() {
   std::cerr << "Load constants from constants.txt\n";
   while(! infile.eof()) {
     getline(infile, cst_str);
-    if (cst_str == "")
+    if (cst_str == "") {
       continue; // ignore trailing whitespace
+    }
     char buf[4096];
     double cst;
     parse_constant(buf, cst, cst_str);
@@ -137,8 +117,9 @@ void try_write_constants_to_file() {
   static FILE* outfile;
   outfile = fopen(outfile_path.c_str(), "w");
   constant_map_type::iterator it;
-  for (it = recorded_constants.begin(); it != recorded_constants.end(); it++)
+  for (it = recorded_constants.begin(); it != recorded_constants.end(); it++) {
     print_constant(outfile, it->first, it->second);
+  }
   fclose(outfile);
 }
 
@@ -291,38 +272,25 @@ public:
     return shared_info.load() == 0;
   }
 
-  void report(complexity_type complexity, cost_type elapsed, bool forced) {
+  void report(complexity_type complexity, cost_type elapsed) {
     double local_ticks_per_microsecond = machine::cpu_frequency_ghz * 1000.0;
-
     double elapsed_time = elapsed / local_ticks_per_microsecond;
     cost_type measured_cst = elapsed_time / complexity;    
-
     if (elapsed_time > kappa) {
       return;
     }
     update(measured_cst, complexity);
-
-    return;
-  }
-
-  void report(complexity_type complexity, cost_type elapsed) {
-    report(complexity, elapsed, false);
   }
   
   cost_type predict(complexity_type complexity) {
-    if (complexity == complexity::tiny) {
-      return cost::tiny;
-    }
     info_loader info;
     info.l = shared_info.load();
-
     if (complexity > update_size_ratio * info.f.size) { // was 2
       return kappa + 1;
     }
     if (complexity <= info.f.size) {
       return kappa - 1;
     }
-
     return info.f.cst * ((double) complexity) / update_size_ratio; // allow kappa * alpha runs
   }
   
