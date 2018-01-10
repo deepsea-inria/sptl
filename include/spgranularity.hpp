@@ -82,24 +82,14 @@ namespace sptl {
 
     perworker_type<dynidentifier<execmode_type>> execmode(Parallel);
 
+    perworker_type<long long> timer(0);
+    
+    perworker_type<cost_type> work(0);
+
     static inline
     execmode_type& my_execmode() {
       return execmode.mine().back();
     }
-
-    // `p` execmode of caller; `c` callee
-    static inline
-    execmode_type execmode_combine(execmode_type p, execmode_type c) {
-      // callee gives priority to caller when caller is Sequential
-      if (p == Sequential) {
-        return Sequential;
-      }
-      // otherwise, callee takes priority
-      return c;
-    }
-
-    /*---------------------------------------------------------------------*/
-    /* Series-parallel guard */
 
     template <class Body_fct>
     void run(execmode_type c, const Body_fct& body_fct) {
@@ -115,10 +105,6 @@ namespace sptl {
       auto elapsed = cycle_counter::since(start);
       estimator.report(std::max((complexity_type)1, m), elapsed);
     }
-
-    perworker_type<long long> timer(0);
-    
-    perworker_type<cost_type> work(0);
             
     template <
       class Complexity_measure_fct,
@@ -204,6 +190,9 @@ namespace sptl {
     static constexpr
     char dflt_estim_name[] = "auto";
     
+    /*---------------------------------------------------------------------*/
+    /* Series-parallel guard */
+
     template <
       class Complexity_measure_fct,
       class Par_body_fct,
