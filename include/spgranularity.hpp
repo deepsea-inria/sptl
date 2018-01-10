@@ -255,7 +255,7 @@ namespace sptl {
 
     template <class Body_fct1, class Body_fct2>
     void primitive_fork2(const Body_fct1& f1, const Body_fct2& f2) {
-#if defined(USE_CILK_PLUS_RUNTIME)
+#if defined(SPTL_USE_CILK_PLUS_RUNTIME)
       cilk_spawn f1();
       f2();
       cilk_sync;
