@@ -229,7 +229,6 @@ public:
     parallel_for(0l, prefix_sz, body_comp_rng, [&] (size_t i) {
       ptr[i] = body(i);
     });
-#endif
   }
 
   template <class Body, class Body_cmp_rng>
