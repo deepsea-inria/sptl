@@ -142,11 +142,8 @@ void scan_seq(const parray<Result>& ins,
   scan_seq(ins.cbegin(), ins.cend(), outs_lo, out, id, st);
 }
 
-#ifdef SPTL_CONTROL_BY_FORCE_PARALLEL
-const long Scan_branching_factor = 2;
-#else
-const long Scan_branching_factor = DATAPAR_THRESHOLD;
-#endif
+static constexpr
+size_t Scan_branching_factor = 2048;
 
 static inline
 size_t get_nb_blocks(size_t k, size_t n) {
@@ -192,7 +189,7 @@ void scan_rec(const parray<Result>& ins,
     auto beg = ins.cbegin();
     size_t lo = get_rng(k, n, i).first;
     size_t hi = get_rng(k, n, i).second;
-    return merge_comp(beg+lo, beg+hi);
+    return merge_comp(beg + lo, beg + hi);
   };
   granularity::spguard([&] { return merge_comp(ins.cbegin(), ins.cend()); }, [&] {
     if (n <= k) {
@@ -227,7 +224,7 @@ void scan_rec(const parray<Result>& ins,
         auto ins_beg = ins.cbegin();
         size_t lo = get_rng(k, n, i).first;
         size_t hi = get_rng(k, n, i).second;
-        scan_seq(ins_beg+lo, ins_beg+hi, outs_lo+lo, out, scans[i], st);
+        scan_seq(ins_beg + lo, ins_beg + hi, outs_lo + lo, out, scans[i], st);
       };
       if (Merge_comp_is_linear::value) {
         parallel_for(0l, m, b2);
@@ -305,7 +302,7 @@ void scan(Input& in,
         size_t lo = get_rng(k, n, i).first;
         size_t hi = get_rng(k, n, i).second;
         Input in2 = in.slice(splits, lo, hi);
-        scan(in2, out, scans[i], outs_lo+lo, merge_comp, convert_reduce_comp, convert_reduce, convert_scan, seq_convert_scan, st);
+        scan(in2, out, scans[i], outs_lo + lo, merge_comp, convert_reduce_comp, convert_reduce, convert_scan, seq_convert_scan, st);
       };
       if (Merge_comp_is_linear::value) {
         parallel_for(0l, m, b2);
