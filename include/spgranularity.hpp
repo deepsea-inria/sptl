@@ -294,7 +294,7 @@ void fork2(const Body_fct1& f1, const Body_fct2& f2) {
     f1();
     f2();
   } else if ((c == Parallel) || (c == Force_parallel)) {
-primitive_fork(f1, f2);
+    primitive_fork(f1, f2);
   } else if (c == Unknown) {
     cost_type upper_work = work.mine() + wall_clock::since(timer.mine());
     work.mine() = 0;
