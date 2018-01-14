@@ -1,10 +1,25 @@
 
-#include "spweight.hpp"
+#include <type_traits>
+
+#include "spparray.hpp"
+#include "sppchunkedseqbase.hpp"
 
 #ifndef _SPTL_DATAPAR_H_
 #define _SPTL_DATAPAR_H_
 
 namespace sptl {
+
+/*---------------------------------------------------------------------*/
+/* Type declarations */
+  
+template <class Iter>
+using value_type_of = typename std::iterator_traits<Iter>::value_type;
+
+template <class Iter>
+using reference_of = typename std::iterator_traits<Iter>::reference;
+
+template <class Iter>
+using pointer_of = typename std::iterator_traits<Iter>::pointer;
 
 using scan_type = enum {
   forward_inclusive_scan,
@@ -33,7 +48,7 @@ void reduce(Input& in,
             const Convert_reduce_comp& convert_reduce_comp,
             const Convert_reduce& convert_reduce,
             const Seq_convert_reduce& seq_convert_reduce) {
-  granularity::spguard([&] { return convert_reduce_comp(in); }, [&] {
+  spguard([&] { return convert_reduce_comp(in); }, [&] {
     if (! in.can_split()) {
       convert_reduce(in, dst);
     } else {
@@ -41,7 +56,7 @@ void reduce(Input& in,
       in.split(in2);
       Result dst2;
       out.init(dst2);
-      granularity::fork2([&] {
+      fork2([&] {
         reduce(in,  out, id, dst,  convert_reduce_comp, convert_reduce, seq_convert_reduce, contr);
       }, [&] {
         reduce(in2, out, id, dst2, convert_reduce_comp, convert_reduce, seq_convert_reduce, contr);
@@ -53,6 +68,27 @@ void reduce(Input& in,
   });
 }
 
+template <
+  class Input,
+  class Output,
+  class Result,
+  class Convert_reduce,
+  class Seq_convert_reduce
+>
+void reduce(Input& in,
+            const Output& out,
+            Result& id,
+            Result& dst,
+            const Convert_reduce& convert_reduce,
+            const Seq_convert_reduce& seq_convert_reduce) {
+  auto convert_reduce_comp = [&] (Input& in) {
+    return in.size();
+  };
+  reduce(in, out, id, dst, convert_reduce_comp, convert_reduce, seq_convert_reduce);
+}
+
+namespace {
+    
 template <
   class In_iter,
   class Out_iter,
@@ -157,7 +193,7 @@ std::pair<size_t,size_t> get_rng(size_t k, size_t n, size_t i) {
   return std::make_pair(lo, hi);
 }
 
-class merge_comp_is_linear {
+class merge_comp_rng_is_linear {
 public:
 
   static constexpr
@@ -165,7 +201,7 @@ public:
 
 };
 
-class merge_comp_is_not_linear {
+class merge_comp_rng_is_not_linear {
 public:
 
   static constexpr
@@ -173,13 +209,13 @@ public:
 
 };
 
-template <class Result, class Output, class Merge_comp, class Merge_comp_is_linear>
+template <class Result, class Output, class Merge_comp_rng, class Merge_comp_rng_is_linear>
 void scan_rec(const parray<Result>& ins,
               typename parray<Result>::iterator outs_lo,
               const Output& out,
               const Result& id,
-              const Merge_comp& merge_comp,
-              const Merge_comp_is_linear& merge_comp_is_linear,
+              const Merge_comp_rng& merge_comp_rng,
+              const Merge_comp_rng_is_linear& merge_comp_rng_is_linear,
               scan_type st) {
   static constexpr
   int k = Scan_branching_factor;
@@ -189,9 +225,9 @@ void scan_rec(const parray<Result>& ins,
     auto beg = ins.cbegin();
     size_t lo = get_rng(k, n, i).first;
     size_t hi = get_rng(k, n, i).second;
-    return merge_comp(beg + lo, beg + hi);
+    return merge_comp_rng(beg + lo, beg + hi);
   };
-  granularity::spguard([&] { return merge_comp(ins.cbegin(), ins.cend()); }, [&] {
+  spguard([&] { return merge_comp_rng(ins.cbegin(), ins.cend()); }, [&] {
     if (n <= k) {
       scan_seq(ins, outs_lo, out, id, st);
     } else {
@@ -207,7 +243,7 @@ void scan_rec(const parray<Result>& ins,
         size_t hi = get_rng(k, n, i).second;
         out.merge(beg + lo, beg + hi, partials[i]);
       };
-      if (Merge_comp_is_linear::value) {
+      if (Merge_comp_rng_is_linear::value) {
         parallel_for(0l, m, b1);
       } else {
         parallel_for(0l, m, loop_comp, b1);
@@ -219,14 +255,14 @@ void scan_rec(const parray<Result>& ins,
         scans.prefix_tabulate(m, m);
       }
       auto st2 = (is_backward_scan(st)) ? backward_exclusive_scan : forward_exclusive_scan;
-      scan_rec(partials, scans.begin(), out, id, merge_comp, merge_comp_is_linear, st2);
+      scan_rec(partials, scans.begin(), out, id, merge_comp_rng, merge_comp_rng_is_linear, st2);
       auto b2 = [&] (size_t i) {
         auto ins_beg = ins.cbegin();
         size_t lo = get_rng(k, n, i).first;
         size_t hi = get_rng(k, n, i).second;
         scan_seq(ins_beg + lo, ins_beg + hi, outs_lo + lo, out, scans[i], st);
       };
-      if (Merge_comp_is_linear::value) {
+      if (Merge_comp_rng_is_linear::value) {
         parallel_for(0l, m, b2);
       } else {
         parallel_for(0l, m, loop_comp, b2);
@@ -242,9 +278,9 @@ template <
   class Output,
   class Result,
   class Output_iter,
-  class Merge_comp,
-  class Merge_comp_is_linear,
-  class Convert_reduce_comp,
+  class Merge_comp_rng,
+  class Merge_comp_rng_is_linear,
+  class Convert_reduce_comp_rng,
   class Convert_reduce,
   class Convert_scan,
   class Seq_convert_scan
@@ -253,9 +289,9 @@ void scan(Input& in,
           const Output& out,
           Result& id,
           Output_iter outs_lo,
-          const Merge_comp& merge_comp,
-          const Merge_comp_is_linear& merge_comp_is_linear,
-          const Convert_reduce_comp& convert_reduce_comp,
+          const Merge_comp_rng& merge_comp_rng,
+          const Merge_comp_rng_is_linear& merge_comp_rng_is_linear,
+          const Convert_reduce_comp_rng& convert_reduce_comp_rng,
           const Convert_reduce& convert_reduce,
           const Convert_scan& convert_scan,
           const Seq_convert_scan& seq_convert_scan,
@@ -266,9 +302,9 @@ void scan(Input& in,
   auto loop_comp = [&] (size_t i) {
     size_t lo = get_rng(k, n, i).first;
     size_t hi = get_rng(k, n, i).second;
-    return convert_reduce_comp(lo, hi);
+    return convert_reduce_comp_rng(lo, hi);
   };
-  granularity::spguard([&] { return convert_reduce_comp(0l, n); }, [&] {
+  spguard([&] { return convert_reduce_comp_rng(0l, n); }, [&] {
     if (n <= k) {
       convert_scan(id, in, outs_lo);
     } else {
@@ -285,7 +321,7 @@ void scan(Input& in,
         Input in2 = in.slice(splits, lo, hi);
         convert_reduce(in2, partials[i]);
       };
-      if (Merge_comp_is_linear::value) {
+      if (Merge_comp_rng_is_linear::value) {
         parallel_for(0l, m, b1);
       } else {
         parallel_for(0l, m, loop_comp, b1);
@@ -297,14 +333,15 @@ void scan(Input& in,
         scans.prefix_tabulate(m, m);
       }
       auto st2 = (is_backward_scan(st)) ? backward_exclusive_scan : forward_exclusive_scan;
-      scan_rec(partials, scans.begin(), out, id, merge_comp, merge_comp_is_linear, st2);
+      scan_rec(partials, scans.begin(), out, id, merge_comp_rng, merge_comp_rng_is_linear, st2);
       auto b2 = [&] (size_t i) {
         size_t lo = get_rng(k, n, i).first;
         size_t hi = get_rng(k, n, i).second;
         Input in2 = in.slice(splits, lo, hi);
-        scan(in2, out, scans[i], outs_lo + lo, merge_comp, convert_reduce_comp, convert_reduce, convert_scan, seq_convert_scan, st);
+        merge_comp_rng_is_linear il;
+        scan(in2, out, scans[i], outs_lo + lo, merge_comp_rng, il, convert_reduce_comp_rng, convert_reduce, convert_scan, seq_convert_scan, st);
       };
-      if (Merge_comp_is_linear::value) {
+      if (Merge_comp_rng_is_linear::value) {
         parallel_for(0l, m, b2);
       } else {
         parallel_for(0l, m, loop_comp, b2);
@@ -314,8 +351,663 @@ void scan(Input& in,
     seq_convert_scan(id, in, outs_lo);
   });
 }
+
+} // end namespace
+
+template <
+  class Input,
+  class Output,
+  class Result,
+  class Output_iter,
+  class Merge_comp_rng,
+  class Convert_reduce_comp_rng,
+  class Convert_reduce,
+  class Convert_scan,
+  class Seq_convert_scan
+>
+void scan(Input& in,
+          const Output& out,
+          Result& id,
+          Output_iter outs_lo,
+          const Merge_comp_rng& merge_comp_rng,
+          const Merge_comp_rng_is_linear& merge_comp_rng_is_linear,
+          const Convert_reduce_comp& convert_reduce_comp_rng,
+          const Convert_reduce& convert_reduce,
+          const Convert_scan& convert_scan,
+          const Seq_convert_scan& seq_convert_scan,
+          scan_type st) {
+  merge_comp_rng_is_not_linear il;
+  scan(in, out, id, outs_lo, merge_comp_rng, il, convert_reduce_comp_rng, convert_reduce, convert_scan, seq_convert_scan, st);
+}
+  
+template <
+  class Input,
+  class Output,
+  class Result,
+  class Output_iter,
+  class Convert_reduce,
+  class Convert_scan,
+  class Seq_convert_scan
+>
+void scan(Input& in,
+          const Output& out,
+          Result& id,
+          Output_iter outs_lo,
+          const Convert_reduce& convert_reduce,
+          const Convert_scan& convert_scan,
+          const Seq_convert_scan& seq_convert_scan,
+          scan_type st) {
+  auto merge_comp_rng = [&] (const Result* lo, const Result* hi) {
+    return hi - lo;
+  };
+  merge_comp_rng_is_linear il;
+  auto convert_reduce_comp = [&] (Input& in) {
+    return in.size();
+  };
+  scan(in, out, id, outs_lo, merge_comp_rng, il, convert_reduce_comp, convert_reduce, convert_scan, seq_convert_scan, st);
+}
+  
+template <class Input_iter>
+class random_access_iterator_input {
+public:
+  
+  using self_type = random_access_iterator_input;
+  using array_type = parray<self_type>;
+  
+  Input_iter lo;
+  Input_iter hi;
+  
+  random_access_iterator_input() { }
+  
+  random_access_iterator_input(Input_iter lo, Input_iter hi)
+  : lo(lo), hi(hi) { }
+  
+  bool can_split() const {
+    return size() >= 2;
+  }
+  
+  size_t size() const {
+    return hi - lo;
+  }
+  
+  void split(random_access_iterator_input& dst) {
+    dst = *this;
+    size_t n = size();
+    assert(n >= 2);
+    Input_iter mid = lo + (n / 2);
+    hi = mid;
+    dst.lo = mid;
+  }
+  
+  array_type split(size_t) {
+    array_type tmp;
+    return tmp;
+  }
+  
+  self_type slice(const array_type&, size_t _lo, size_t _hi) {
+    self_type tmp(lo + _lo, lo + _hi);
+    return tmp;
+  }
+  
+};
+  
+using tabulate_input = random_access_iterator_input<size_t>;
+  
+template <class Chunkedseq>
+class chunkedseq_input {
+public:
+  
+  using self_type = chunkedseq_input<Chunkedseq>;
+  using array_type = parray<self_type>;
+  
+  Chunkedseq seq;
+  
+  chunkedseq_input(Chunkedseq& _seq) {
+    _seq.swap(seq);
+  }
+  
+  chunkedseq_input(const chunkedseq_input& other) { }
+  
+  bool can_split() const {
+    return seq.size() >= 2;
+  }
+  
+  void split(chunkedseq_input& dst) {
+    size_t n = seq.size() / 2;
+    seq.split(seq.begin() + n, dst.seq);
+  }
+  
+  array_type split(size_t) {
+    array_type tmp;
+    assert(false);
+    return tmp;
+  }
+  
+  self_type slice(const array_type&, size_t _lo, size_t _hi) {
+    self_type tmp;
+    assert(false);
+    return tmp;
+  }
+  
+};
   
 } // end namespace
+
+/*---------------------------------------------------------------------*/
+/* Level 3 reduction */
+
+namespace level3 {
+
+template <
+  class Input_iter,
+  class Output,
+  class Result,
+  class Lift_comp_rng,
+  class Lift_idx_dst,
+  class Seq_reduce_rng_dst
+>
+void reduce(Input_iter lo,
+            Input_iter hi,
+            const Output& out,
+            Result& id,
+            Result& dst,
+            const Lift_comp_rng& lift_comp_rng,
+            const Lift_idx_dst& lift_idx_dst,
+            const Seq_reduce_rng_dst& seq_reduce_rng_dst) {
+  using input_type = level4::random_access_iterator_input<Input_iter>;
+  input_type in(lo, hi);
+  auto convert_reduce_comp = [&] (input_type& in) {
+    return lift_comp_rng(in.lo, in.hi);
+  };
+  auto convert_reduce = [&] (input_type& in, Result& dst) {
+    size_t i = in.lo - lo;
+    dst = id;
+    for (Input_iter it = in.lo; it != in.hi; it++, i++) {
+      Result tmp;
+      lift_idx_dst(i, *it, tmp);
+      out.merge(tmp, dst);
+    }
+  };
+  auto seq_convert_reduce = [&] (input_type& in, Result& dst) {
+    seq_reduce_rng_dst(in.lo, in.hi, dst);
+  };
+  level4::reduce(in, out, id, dst, convert_reduce_comp, convert_reduce, seq_convert_reduce);
+}
+
+template <
+  class Input_iter,
+  class Output,
+  class Result,
+  class Lift_idx_dst,
+  class Seq_reduce_rng_dst
+>
+void reduce(Input_iter lo,
+            Input_iter hi,
+            const Output& out,
+            Result& id,
+            Result& dst,
+            const Lift_idx_dst& lift_idx_dst,
+            const Seq_reduce_rng_dst& seq_reduce_rng_dst) {
+  auto lift_comp_rng = [&] (const Input_iter* lo, const Input_iter* hi) {
+    return hi - lo;
+  };
+  reduce(lo, hi, out, id, dst, lift_comp_rng, lift_idx_dst, seq_reduce_rng_dst);
+}
+  
+template <
+  class Input_iter,
+  class Output,
+  class Result,
+  class Output_iter,
+  class Output_comp_rng,
+  class Lift_comp_rng,
+  class Lift_idx_dst,
+  class Seq_scan_rng_dst
+>
+void scan(Input_iter lo,
+          Input_iter hi,
+          const Output& out,
+          Result& id,
+          Output_iter outs_lo,
+          const Output_comp_rng& output_comp_rng,
+          const Lift_comp_rng& lift_comp_rng,
+          const Lift_idx_dst& lift_idx_dst,
+          const Seq_scan_rng_dst& seq_scan_rng_dst,
+          scan_type st) {
+  using input_type = level4::random_access_iterator_input<Input_iter>;
+  input_type in(lo, hi);
+  auto convert_reduce_comp_rng = [&] (size_t lo, size_t hi) {
+    return lift_comp_rng(in.lo + lo, in.lo + hi);
+  };
+  auto convert_reduce = [&] (input_type& in, Result& dst) {
+    size_t i = in.lo - lo;
+    dst = id;
+    for (Input_iter it = in.lo; it != in.hi; it++, i++) {
+      Result tmp;
+      lift_idx_dst(i, *it, tmp);
+      out.merge(tmp, dst);
+    }
+  };
+  auto convert_scan = [&] (Result _id, input_type& in, Output_iter outs_lo) {
+    size_t pos = in.lo - lo;
+    level4::scan_seq(in.lo, in.hi, outs_lo, out, _id, [&] (reference_of<Input_iter> src, Result& dst) {
+      lift_idx_dst(pos++, src, dst);
+    }, st);
+  };
+  auto seq_convert_scan = [&] (Result _id, input_type& in, Output_iter outs_lo) {
+    seq_scan_rng_dst(_id, in.lo, in.hi, outs_lo);
+  };
+  auto merge_comp_rng = [&] (const Result* lo, const Result* hi) {
+    return output_comp_rng(lo, hi);
+  };
+  level4::scan(in, out, id, outs_lo, merge_comp_rng, convert_reduce_comp_rng, convert_reduce, convert_scan, seq_convert_scan, st);
+}
+
+template <
+  class Input_iter,
+  class Output,
+  class Result,
+  class Output_iter,
+  class Lift_idx_dst,
+  class Seq_scan_rng_dst
+>
+void scan(Input_iter lo,
+          Input_iter hi,
+          const Output& out,
+          Result& id,
+          Output_iter outs_lo,
+          const Lift_idx_dst& lift_idx_dst,
+          const Seq_scan_rng_dst& seq_scan_rng_dst,
+          scan_type st) {
+  auto output_comp_rng = [&] (const Result* lo, const Result* hi) {
+    return hi - lo;
+  };
+  auto lift_comp_rng = [&] (Input_iter lo, Input_iter hi) {
+    return hi - lo;
+  };
+  scan(lo, hi, out, id, outs_lo, output_comp_rng, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
+}
+  
+template <class T>
+class trivial_output {
+public:
+  
+  using result_type = T;
+  
+  void init(T&) const {
+    
+  }
+  
+  void merge(T&, T&) const {
+    
+  }
+  
+};
+  
+template <class Result, class Combine>
+class cell_output {
+public:
+  
+  using result_type = Result;
+  using array_type = parray<result_type>;
+  using const_iterator = typename array_type::const_iterator;
+  
+  result_type id;
+  Combine combine;
+  
+  cell_output(result_type id, Combine combine)
+  : id(id), combine(combine) { }
+  
+  cell_output(const cell_output& other)
+  : id(other.id), combine(other.combine) { }
+  
+  void init(result_type& dst) const {
+    dst = id;
+  }
+  
+  void copy(const result_type& src, result_type& dst) const {
+    dst = src;
+  }
+  
+  void merge(const result_type& src, result_type& dst) const {
+    dst = combine(dst, src);
+  }
+  
+  void merge(const_iterator lo, const_iterator hi, result_type& dst) const {
+    dst = id;
+    for (const_iterator it = lo; it != hi; it++) {
+      dst = combine(*it, dst);
+    }
+  }
+  
+};
+  
+template <class Chunked_sequence>
+class chunkedseq_output {
+public:
+  
+  using result_type = Chunked_sequence;
+  using array_type = parray<result_type>;
+  using const_iterator = typename array_type::const_iterator;
+  
+  result_type id;
+  
+  chunkedseq_output() { }
+  
+  void init(result_type& dst) const {
+    
+  }
+  
+  void copy(const result_type& src, result_type& dst) const {
+    dst = src;
+  }
+  
+  void merge(result_type& src, result_type& dst) const {
+    dst.concat(src);
+  }
+  
+  void merge(const_iterator lo, const_iterator hi, result_type& dst) const {
+    dst = id;
+    for (const_iterator it = lo; it != hi; it++) {
+      merge(*it, dst);
+    }
+  }
+  
+};
+  
+} // end namespace
+
+/*---------------------------------------------------------------------*/
+/* Level 2 reduction */
+
+namespace level2 {
+  
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Lift_comp_rng,
+  class Lift_idx,
+  class Seq_reduce_rng
+>
+Result reduce(Iter lo,
+              Iter hi,
+              Result id,
+              const Combine& combine,
+              const Lift_comp_rng& lift_comp_rng,
+              const Lift_idx& lift_idx,
+              const Seq_reduce_rng& seq_reduce_rng) {
+  using output_type = level3::cell_output<Result, Combine>;
+  output_type out(id, combine);
+  Result result;
+  auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
+    dst = lift_idx(pos, x);
+  };
+  auto seq_reduce_rng_dst = [&] (Iter lo, Iter hi, Result& dst) {
+    dst = seq_reduce_rng(lo, hi);
+  };
+  level3::reduce(lo, hi, out, id, result, lift_comp_rng, lift_idx_dst, seq_reduce_rng_dst);
+  return result;
+}
+  
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Combine_comp_rng,
+  class Lift_comp_rng,
+  class Lift_idx,
+  class Seq_scan_rng_dst
+>
+parray<Result> scan(Iter lo,
+                    Iter hi,
+                    Result id,
+                    const Combine& combine,
+                    const Combine_comp_rng& combine_comp_rng,
+                    const Lift_comp_rng& lift_comp_rng,
+                    const Lift_idx& lift_idx,
+                    const Seq_scan_rng_dst& seq_scan_rng_dst,
+                    scan_type st) {
+  using output_type = level3::cell_output<Result, Combine>;
+  output_type out(id, combine);
+  parray<Result> results;
+  if (std::is_fundamental<Result>::value) {
+    results.prefix_tabulate(hi - lo, 0);
+  } else {
+    results.prefix_tabulate(hi - lo, 0);
+  }
+  auto outs_lo = results.begin();
+  auto output_comp_rng = combine_comp_rng;
+  auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
+    dst = lift_idx(pos, x);
+  };
+  level3::scan(lo, hi, out, id, outs_lo, output_comp_rng, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
+  return results;
+}
+
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Lift_idx,
+  class Seq_scan_rng_dst
+>
+parray<Result> scan(Iter lo,
+                    Iter hi,
+                    Result id,
+                    const Combine& combine,
+                    const Lift_idx& lift_idx,
+                    const Seq_scan_rng_dst& seq_scan_rng_dst,
+                    scan_type st) {
+  auto combine_comp_rng = [&] (const Result* lo, const Result* hi) {
+    return hi - lo;
+  };
+  auto lift_comp_rng = [&] (Iter lo, Iter hi) {
+    return hi - lo;
+  };  
+  return scan(lo, hi, id, combine, combine_comp_rng, lift_comp_rng, lift_idx, seq_scan_rng_dst, st);
+}
+  
+} // end namespace
+
+/*---------------------------------------------------------------------*/
+/* Level 1 reduction */
+  
+namespace level1 {
+  
+namespace {
+  
+template <class Iter, class Item>
+class seq_reduce_rng_spec {
+public:
+  
+  template <
+    class Result,
+    class Combine,
+    class Lift_idx
+  >
+  Result f(size_t i, Iter lo, Iter hi, Result id, const Combine& combine, const Lift_idx& lift_idx) {
+    Result r = id;
+    for (auto it = lo; it != hi; it++, i++) {
+      r = combine(r, lift_idx(i, *it));
+    }
+    return r;
+  }
+
+};
+
+template <class Item>
+class seq_reduce_rng_spec<typename pchunkedseq<Item>::iterator, Item> {
+public:
+  
+  using iterator = typename pchunkedseq<Item>::iterator;
+  using value_type = Item;
+  using reference = reference_of<iterator>;
+  
+  template <
+  class Result,
+  class Combine,
+  class Lift_idx
+  >
+  Result f(size_t i, iterator lo, iterator hi, Result id, const Combine& combine, const Lift_idx& lift_idx) {
+    Result r = id;
+    data::chunkedseq::extras::for_each(lo, hi, [&] (reference x) {
+      r = combine(r, lift_idx(i++, x));
+    });
+    return r;
+  }
+
+};
+  
+} // end namespace
+  
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Lift_comp_rng,
+  class Lift_idx
+>
+Result reducei(Iter lo,
+               Iter hi,
+               Result id,
+               const Combine& combine,
+               const Lift_comp_rng& lift_comp_rng,
+               const Lift_idx& lift_idx) {
+  auto seq_reduce_rng = [&] (Iter _lo, Iter _hi) {
+    seq_reduce_rng_spec<Iter, value_type_of<Iter>> f;
+    return f.f(_lo - lo, _lo, _hi, id, combine, lift_idx);
+  };
+  return level2::reduce(lo, hi, id, combine, lift_comp_rng, lift_idx, seq_reduce_rng);
+}
+  
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Lift_comp_rng,
+  class Lift
+>
+Result reduce(Iter lo,
+              Iter hi,
+              Result id,
+              const Combine& combine,
+              const Lift_comp_rng& lift_comp_rng,
+              const Lift& lift) {
+  auto lift_idx = [&] (size_t pos, reference_of<Iter> x) {
+    return lift(x);
+  };
+  return reducei(lo, hi, id, combine, lift_comp_rng, lift_idx);
+}
+
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Lift
+>
+Result reduce(Iter lo,
+              Iter hi,
+              Result id,
+              const Combine& combine,
+              const Lift& lift) {
+  auto lift_comp_rng = [&] (Iter lo, Iter hi) {
+    return hi - lo;
+  };
+  return reduce(lo, hi, id, combine, lift_comp_rng, lift);
+}
+
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Lift_comp_rng,
+  class Lift_idx
+>
+parray<Result> scani(Iter lo,
+                     Iter hi,
+                     Result id,
+                     const Combine& combine,
+                     const Lift_comp_rng& lift_comp_rng,
+                     const Lift_idx& lift_idx,
+                     scan_type st) {
+  using output_type = level3::cell_output<Result, Combine>;
+  output_type out(id, combine);
+  using iterator = typename parray<Result>::iterator;
+  auto seq_scan_rng_dst = [&] (Result _id, Iter _lo, Iter _hi, iterator outs_lo) {
+    size_t pos = _lo - lo;
+    level4::scan_seq(_lo, _hi, outs_lo, out, _id, [&] (reference_of<Iter> src, Result& dst) {
+      dst = lift_idx(pos++, src);
+    }, st);
+  };
+  return level2::scan(lo, hi, id, combine, lift_comp_rng, lift_idx, seq_scan_rng_dst, st);
+}
+
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Lift_comp_rng,
+  class Lift
+>
+parray<Result> scan(Iter lo,
+                    Iter hi,
+                    Result id,
+                    const Combine& combine,
+                    const Lift_comp_rng& lift_comp_rng,
+                    const Lift& lift,
+                    scan_type st) {
+  auto lift_idx = [&] (size_t pos, reference_of<Iter> x) {
+    return lift(x);
+  };
+  return scani(lo, hi, id, combine, lift_comp_rng, lift_idx, st);
+}
+
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Lift
+>
+parray<Result> scan(Iter lo,
+                    Iter hi,
+                    Result id,
+                    const Combine& combine,
+                    const Lift& lift,
+                    scan_type st) {
+  auto lift_comp_rng = [&] (Iter lo, Iter hi) {
+    return hi - lo;
+  };
+  return scan(lo, hi, id, combine, lift_comp_rng, lift, st);
+}
+    
+} // end namespace
+
+/*---------------------------------------------------------------------*/
+/* Level 0 reduction */
+
+template <class Iter, class Item, class Combine>
+Item reduce(Iter lo, Iter hi, Item id, const Combine& combine) {
+  auto lift = [&] (reference_of<Iter> x) {
+    return x;
+  };
+  return level1::reduce(lo, hi, id, combine, lift);
+}
+  
+template <
+  class Iter,
+  class Item,
+  class Combine
+>
+parray<Item> scan(Iter lo,
+                  Iter hi,
+                  Item id,
+                  const Combine& combine, scan_type st) {
+  auto lift = [&] (reference_of<Iter> x) {
+    return x;
+  };
+  return level1::scan(lo, hi, id, combine, lift, st);
+}
   
 } // end namespace
 

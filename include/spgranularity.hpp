@@ -41,6 +41,8 @@ namespace sptl {
     /*---------------------------------------------------------------------*/
     /* Dynamic scope */
 
+    namespace {
+      
     template <class Item>
     class dynidentifier {
     private:
@@ -66,8 +68,12 @@ namespace sptl {
       }
     };
 
+    } // end namespace
+    
     /*---------------------------------------------------------------------*/
     /* Execution mode */
+
+    namespace {
 
     using execmode_type = enum {
       Force_sequential = 0,
@@ -125,36 +131,36 @@ namespace sptl {
 #endif
       execmode_type p = my_execmode();
       if ((p == Sequential) || (p == Force_Sequential)) {
-	run(Sequential, seq_body_fct);
-	return;
+        run(Sequential, seq_body_fct);
+        return;
       }
       if (p == Force_parallel) {
-	run(Parallel, par_body_fct);
-	return;
+        run(Parallel, par_body_fct);
+        return;
       }
       estimator& estim = contr.get_estimator();
       execmode_type c = (estim.is_undefined()) ? Unknown : p;
       complexity_type m = complexity_measure_fct();
       if (c == Parallel) {
-	complexity_type comp = std::max((complexity_type)1, m);
-	cost_type pred = estim.predict(comp);
-	c = (pred <= kappa) ? Sequential : Parallel;
+        complexity_type comp = std::max((complexity_type)1, m);
+        cost_type pred = estim.predict(comp);
+        c = (pred <= kappa) ? Sequential : Parallel;
       }
       if (c == Sequential) {
         run_and_report(m, seq_body_fct, estim);
       } else if (c == Parallel) {
-	run(Parallel, par_body_fct);
+        run(Parallel, par_body_fct);
       } else if (c == Unknown) {
-	cost_type upper_work = work.mine() + wall_clock::since(timer.mine());
-	work.mine() = 0;
-	timer.mine() = wall_clock::now();
-	run(Unknown, body_fct);
-	work.mine() += wall_clock::since(timer.mine());
-	estimator.report(std::max((complexity_type) 1, m), work.mine());
-	work.mine() += upper_work;
-	timer.mine() = wall_clock::now();
+        cost_type upper_work = work.mine() + wall_clock::since(timer.mine());
+        work.mine() = 0;
+        timer.mine() = wall_clock::now();
+        run(Unknown, body_fct);
+        work.mine() += wall_clock::since(timer.mine());
+        estimator.report(std::max((complexity_type) 1, m), work.mine());
+        work.mine() += upper_work;
+        timer.mine() = wall_clock::now();
       } else {
-	assert(false);
+        assert(false);
       }
     }
 
@@ -163,8 +169,8 @@ namespace sptl {
       class Par_body_fct
       >
     void spguard(control_by_prediction& contr,
-		 const Complexity_measure_fct& complexity_measure_fct,
-		 const Par_body_fct& par_body_fct) {
+                 const Complexity_measure_fct& complexity_measure_fct,
+                 const Par_body_fct& par_body_fct) {
       spguard(contr, complexity_measure_fct, par_body_fct, par_body_fct);
     }
 
@@ -189,121 +195,126 @@ namespace sptl {
     
     static constexpr
     char dflt_estim_name[] = "auto";
+
+  } // end namespace
+  } // end namespace
+  
+/*---------------------------------------------------------------------*/
+/* Series-parallel guard */
+
+template <
+  class Complexity_measure_fct,
+  class Par_body_fct,
+  class Seq_body_fct
+  >
+void spguard(const Complexity_measure_fct& complexity_measure_fct,
+             const Par_body_fct& par_body_fct,
+             const Seq_body_fct& seq_body_fct) {
+  using controller_type = controller_holder<dflt_estim_name, Complexity_measure_fct, Par_body_fct, Seq_body_fct>;
+  spguard(controller_type::controller, complexity_measure_fct, par_body_fct, seq_body_fct);
+}
+
+template <
+  class Complexity_measure_fct,
+  class Par_body_fct
+  >
+void spguard(const Complexity_measure_fct& complexity_measure_fct,
+ const Par_body_fct& par_body_fct) {
+  using controller_type = controller_holder<dflt_estim_name, Complexity_measure_fct, Par_body_fct>;
+  spguard(controller_type::controller, complexity_measure_fct, par_body_fct);
+}
+
+template <class Par_body_fct>
+void spguard(control_by_force_parallel&, const Par_body_fct& par_body_fct) {
+  run(Force_parallel, par_body_fct);
+}
+
+template <
+  class Complexity_measure_fct,
+  class Par_body_fct,
+  class Seq_body_fct
+  >
+void spguard(control_by_force_parallel& contr,
+             const Complexity_measure_fct&,
+             const Par_body_fct& par_body_fct,
+             const Seq_body_fct&) {
+  spguard(contr, par_body_fct);
+}
+
+template <class Seq_body_fct>
+void spguard(control_by_force_sequential&, const Seq_body_fct& seq_body_fct) {
+  run(Force_sequential, seq_body_fct);
+}
+
+// same as above but accepts all arguments to support general case
+template <
+  class Complexity_measure_fct,
+  class Par_body_fct,
+  class Seq_body_fct
+  >
+void spguard(control_by_force_sequential& contr,
+             const Complexity_measure_fct&,
+             const Par_body_fct&,
+             const Seq_body_fct& seq_body_fct) {
+  spguard(contr, seq_body_fct);
+}
+
+/*---------------------------------------------------------------------*/
+/* Granularity-control enriched fork join */
+
+namespace {
     
-    /*---------------------------------------------------------------------*/
-    /* Series-parallel guard */
-
-    template <
-      class Complexity_measure_fct,
-      class Par_body_fct,
-      class Seq_body_fct
-      >
-    void spguard(const Complexity_measure_fct& complexity_measure_fct,
-		 const Par_body_fct& par_body_fct,
-		 const Seq_body_fct& seq_body_fct) {
-      using controller_type = controller_holder<dflt_estim_name, Complexity_measure_fct, Par_body_fct, Seq_body_fct>;
-      spguard(controller_type::controller, complexity_measure_fct, par_body_fct, seq_body_fct);
-    }
-
-    template <
-      class Complexity_measure_fct,
-      class Par_body_fct
-      >
-    void spguard(const Complexity_measure_fct& complexity_measure_fct,
-		 const Par_body_fct& par_body_fct) {
-      using controller_type = controller_holder<dflt_estim_name, Complexity_measure_fct, Par_body_fct>;
-      spguard(controller_type::controller, complexity_measure_fct, par_body_fct);
-    }
-                    
-    template <class Par_body_fct>
-    void spguard(control_by_force_parallel&, const Par_body_fct& par_body_fct) {
-      run(Force_parallel, par_body_fct);
-    }
-
-    template <
-      class Complexity_measure_fct,
-      class Par_body_fct,
-      class Seq_body_fct
-      >
-    void spguard(control_by_force_parallel& contr,
-                 const Complexity_measure_fct&,
-                 const Par_body_fct& par_body_fct,
-                 const Seq_body_fct&) {
-      spguard(contr, par_body_fct);
-    }
-
-    template <class Seq_body_fct>
-    void spguard(control_by_force_sequential&, const Seq_body_fct& seq_body_fct) {
-      run(Force_sequential, seq_body_fct);
-    }
-    
-    // same as above but accepts all arguments to support general case
-    template <
-      class Complexity_measure_fct,
-      class Par_body_fct,
-      class Seq_body_fct
-      >
-    void spguard(control_by_force_sequential& contr,
-                 const Complexity_measure_fct&,
-                 const Par_body_fct&,
-                 const Seq_body_fct& seq_body_fct) {
-      spguard(contr, seq_body_fct);
-    }
-    
-    /*---------------------------------------------------------------------*/
-    /* Granularity-control enriched fork join */
-
-    template <class Body_fct1, class Body_fct2>
-    void primitive_fork2(const Body_fct1& f1, const Body_fct2& f2) {
+template <class Body_fct1, class Body_fct2>
+void primitive_fork2(const Body_fct1& f1, const Body_fct2& f2) {
 #if defined(SPTL_USE_CILK_PLUS_RUNTIME)
-      cilk_spawn f1();
-      f2();
-      cilk_sync;
+  cilk_spawn f1();
+  f2();
+  cilk_sync;
 #else
-      f1();
-      f2();
+  f1();
+  f2();
 #endif
-    }
+}
 
-    template <class Body_fct1, class Body_fct2>
-    void fork2(const Body_fct1& f1, const Body_fct2& f2) {
+} // end namespace
+  
+template <class Body_fct1, class Body_fct2>
+void fork2(const Body_fct1& f1, const Body_fct2& f2) {
 #if defined(SPTL_SEQUENTIAL_ELISION) || defined(SPTL_SEQUENTIAL_BASELINE)
-      f1();
-      f2();
-      return;
+  f1();
+  f2();
+  return;
 #endif
 #if defined(SPTL_PARALLEL_ELISION)
-      primitive_fork2(f1, f2);
-      return;
+  primitive_fork2(f1, f2);
+  return;
 #endif
-      execmode_type c = my_execmode();
-      if ((c == Sequential) || (c == Force_sequential)) {
-        f1();
-        f2();
-      } else if ((c == Parallel) || (c == Force_parallel)) {
-	primitive_fork(f1, f2);
-      } else if (c == Unknown) {
-        cost_type upper_work = work.mine() + wall_clock::since(timer.mine());
+  execmode_type c = my_execmode();
+  if ((c == Sequential) || (c == Force_sequential)) {
+    f1();
+    f2();
+  } else if ((c == Parallel) || (c == Force_parallel)) {
+primitive_fork(f1, f2);
+  } else if (c == Unknown) {
+    cost_type upper_work = work.mine() + wall_clock::since(timer.mine());
+    work.mine() = 0;
+    cost_type left_work, right_work;
+    primitive_fork2([&] {
         work.mine() = 0;
-        cost_type left_work, right_work;
-        primitive_fork2([&] {
-            work.mine() = 0;
-            timer.mine() = wall_clock::now();
-            run(c, f1);
-            left_work = work.mine() + wall_clock::since(timer.mine());
-          }, [&] {
-            work.mine() = 0;
-            timer.mine() = wall_clock::now();
-            run(c, f2);
-            right_work = work.mine() + wall_clock::since(timer.mine());
-          });
-        work.mine() = upper_work + left_work + right_work;
         timer.mine() = wall_clock::now();
-      }
-    }
-    
-  } // end namespace  
-  
+        run(c, f1);
+        left_work = work.mine() + wall_clock::since(timer.mine());
+      }, [&] {
+        work.mine() = 0;
+        timer.mine() = wall_clock::now();
+        run(c, f2);
+        right_work = work.mine() + wall_clock::since(timer.mine());
+      });
+    work.mine() = upper_work + left_work + right_work;
+    timer.mine() = wall_clock::now();
+  }
+}
+
 } // end namespace
 
 #endif
