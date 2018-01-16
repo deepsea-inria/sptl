@@ -356,21 +356,20 @@ void scan(Input& in,
 
 template <
   class Input,
+  class Merge_comp_rng,
   class Output,
   class Result,
   class Output_iter,
-  class Merge_comp_rng,
   class Convert_reduce_comp_rng,
   class Convert_reduce,
   class Convert_scan,
   class Seq_convert_scan
 >
 void scan(Input& in,
+	  const Merge_comp_rng& merge_comp_rng,
           const Output& out,
           Result& id,
           Output_iter outs_lo,
-          const Merge_comp_rng& merge_comp_rng,
-          const Merge_comp_rng_is_linear& merge_comp_rng_is_linear,
           const Convert_reduce_comp& convert_reduce_comp_rng,
           const Convert_reduce& convert_reduce,
           const Convert_scan& convert_scan,
@@ -556,26 +555,29 @@ void reduce(Input_iter lo,
   
 template <
   class Input_iter,
+  class Output_comp_rng,
   class Output,
   class Result,
   class Output_iter,
-  class Output_comp_rng,
   class Lift_comp_rng,
   class Lift_idx_dst,
   class Seq_scan_rng_dst
 >
 void scan(Input_iter lo,
           Input_iter hi,
+	  const Output_comp_rng& output_comp_rng,
           const Output& out,
           Result& id,
           Output_iter outs_lo,
-          const Output_comp_rng& output_comp_rng,
           const Lift_comp_rng& lift_comp_rng,
           const Lift_idx_dst& lift_idx_dst,
           const Seq_scan_rng_dst& seq_scan_rng_dst,
           scan_type st) {
   using input_type = level4::random_access_iterator_input<Input_iter>;
   input_type in(lo, hi);
+  auto merge_comp_rng = [&] (Result* lo, Result* hi) {
+    return output_comp_rng(lo, hi);
+  };
   auto convert_reduce_comp_rng = [&] (size_t lo, size_t hi) {
     return lift_comp_rng(in.lo + lo, in.lo + hi);
   };
@@ -597,10 +599,7 @@ void scan(Input_iter lo,
   auto seq_convert_scan = [&] (Result _id, input_type& in, Output_iter outs_lo) {
     seq_scan_rng_dst(_id, in.lo, in.hi, outs_lo);
   };
-  auto merge_comp_rng = [&] (const Result* lo, const Result* hi) {
-    return output_comp_rng(lo, hi);
-  };
-  level4::scan(in, out, id, outs_lo, merge_comp_rng, convert_reduce_comp_rng, convert_reduce, convert_scan, seq_convert_scan, st);
+  level4::scan(in, merge_comp_rng, out, id, outs_lo, convert_reduce_comp_rng, convert_reduce, convert_scan, seq_convert_scan, st);
 }
 
 template <
@@ -619,13 +618,33 @@ void scan(Input_iter lo,
           const Lift_idx_dst& lift_idx_dst,
           const Seq_scan_rng_dst& seq_scan_rng_dst,
           scan_type st) {
-  auto output_comp_rng = [&] (const Result* lo, const Result* hi) {
+  using input_type = level4::random_access_iterator_input<Input_iter>;
+  input_type in(lo, hi);
+  auto merge_comp_rng = [&] (Result* lo, Result* hi) {
     return hi - lo;
   };
-  auto lift_comp_rng = [&] (Input_iter lo, Input_iter hi) {
+  auto convert_reduce_comp_rng = [&] (size_t lo, size_t hi) {
     return hi - lo;
   };
-  scan(lo, hi, out, id, outs_lo, output_comp_rng, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
+  auto convert_reduce = [&] (input_type& in, Result& dst) {
+    size_t i = in.lo - lo;
+    dst = id;
+    for (Input_iter it = in.lo; it != in.hi; it++, i++) {
+      Result tmp;
+      lift_idx_dst(i, *it, tmp);
+      out.merge(tmp, dst);
+    }
+  };
+  auto convert_scan = [&] (Result _id, input_type& in, Output_iter outs_lo) {
+    size_t pos = in.lo - lo;
+    level4::scan_seq(in.lo, in.hi, outs_lo, out, _id, [&] (reference_of<Input_iter> src, Result& dst) {
+      lift_idx_dst(pos++, src, dst);
+    }, st);
+  };
+  auto seq_convert_scan = [&] (Result _id, input_type& in, Output_iter outs_lo) {
+    seq_scan_rng_dst(_id, in.lo, in.hi, outs_lo);
+  };
+  level4::scan(in, merge_comp_rng, out, id, outs_lo, convert_reduce_comp_rng, convert_reduce, convert_scan, seq_convert_scan, st);
 }
   
 template <class T>
@@ -753,8 +772,8 @@ Result reduce(Iter lo,
 template <
   class Iter,
   class Result,
-  class Combine,
   class Combine_comp_rng,
+  class Combine,
   class Lift_comp_rng,
   class Lift_idx,
   class Seq_scan_rng_dst
@@ -762,13 +781,14 @@ template <
 parray<Result> scan(Iter lo,
                     Iter hi,
                     Result id,
+		    const Combine_comp_rng& combine_comp_rng,
                     const Combine& combine,
-                    const Combine_comp_rng& combine_comp_rng,
                     const Lift_comp_rng& lift_comp_rng,
                     const Lift_idx& lift_idx,
                     const Seq_scan_rng_dst& seq_scan_rng_dst,
                     scan_type st) {
   using output_type = level3::cell_output<Result, Combine>;
+  auto output_comp_rng = combine_comp_rng;
   output_type out(id, combine);
   parray<Result> results;
   if (std::is_fundamental<Result>::value) {
@@ -777,11 +797,10 @@ parray<Result> scan(Iter lo,
     results.prefix_tabulate(hi - lo, 0);
   }
   auto outs_lo = results.begin();
-  auto output_comp_rng = combine_comp_rng;
   auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
     dst = lift_idx(pos, x);
   };
-  level3::scan(lo, hi, out, id, outs_lo, output_comp_rng, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
+  level3::scan(lo, hi, output_comp_rng, out, id, outs_lo, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
   return results;
 }
 
@@ -799,14 +818,79 @@ parray<Result> scan(Iter lo,
                     const Lift_idx& lift_idx,
                     const Seq_scan_rng_dst& seq_scan_rng_dst,
                     scan_type st) {
-  auto combine_comp_rng = [&] (const Result* lo, const Result* hi) {
-    return hi - lo;
+  using output_type = level3::cell_output<Result, Combine>;
+  output_type out(id, combine);
+  parray<Result> results;
+  if (std::is_fundamental<Result>::value) {
+    results.prefix_tabulate(hi - lo, 0);
+  } else {
+    results.prefix_tabulate(hi - lo, 0);
+  }
+  auto outs_lo = results.begin();
+  auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
+    dst = lift_idx(pos, x);
   };
-  auto lift_comp_rng = [&] (Iter lo, Iter hi) {
-    return hi - lo;
-  };  
-  return scan(lo, hi, id, combine, combine_comp_rng, lift_comp_rng, lift_idx, seq_scan_rng_dst, st);
+  level3::scan(lo, hi, out, id, outs_lo, lift_idx_dst, seq_scan_rng_dst, st);
+  return results;
 }
+
+namespace dps {
+
+  template <
+    class Iter,
+    class Result,
+    class Output_iter,
+    class Combine_comp_rng,
+    class Combine,
+    class Lift_comp_rng,
+    class Lift_idx,
+    class Seq_scan_rng_dst
+    >
+  void scan(Iter lo,
+	    Iter hi,
+	    Result& id,
+	    const Combine_comp_rng& combine_comp_rng,
+	    const Combine& combine,
+	    Output_iter outs_lo,
+	    const Lift_comp_rng& lift_comp_rng,
+	    const Lift_idx& lift_idx,
+	    const Seq_scan_rng_dst& seq_scan_rng_dst,
+	    scan_type st) {
+    using output_type = level3::cell_output<Result, Combine>;
+    output_type out(id, combine);
+    auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
+      dst = lift_idx(pos, x);
+    };
+    auto output_comp_rng = combine_comp_rng;
+    level3::scan(lo, hi, out, id, outs_lo, output_comp_rng, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
+  }
+
+  template <
+    class Iter,
+    class Result,
+    class Output_iter,
+    class Combine,
+    class Lift_idx,
+    class Seq_scan_rng_dst
+    >
+  void scan(Iter lo,
+	    Iter hi,
+	    Result& id,
+	    const Combine& combine,
+	    Output_iter outs_lo,
+	    const Lift_idx& lift_idx,
+	    const Seq_scan_rng_dst& seq_scan_rng_dst,
+	    scan_type st) {
+    using output_type = level3::cell_output<Result, Combine>;
+    output_type out(id, combine);
+    auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
+      dst = lift_idx(pos, x);
+    };
+    auto output_comp_rng = combine_comp_rng;
+    level3::scan(lo, hi, out, id, outs_lo, lift_idx_dst, seq_scan_rng_dst, st);
+  }
+  
+} // end namespace
   
 } // end namespace
 
@@ -920,6 +1004,7 @@ Result reduce(Iter lo,
 template <
   class Iter,
   class Result,
+  class Combine_comp_rng,
   class Combine,
   class Lift_comp_rng,
   class Lift_idx
@@ -927,6 +1012,7 @@ template <
 parray<Result> scani(Iter lo,
                      Iter hi,
                      Result id,
+		     const Combine_comp_rng& combine_comp_rng,
                      const Combine& combine,
                      const Lift_comp_rng& lift_comp_rng,
                      const Lift_idx& lift_idx,
@@ -940,12 +1026,13 @@ parray<Result> scani(Iter lo,
       dst = lift_idx(pos++, src);
     }, st);
   };
-  return level2::scan(lo, hi, id, combine, lift_comp_rng, lift_idx, seq_scan_rng_dst, st);
+  return level2::scan(lo, hi, id, combine_comp_rng, combine, lift_comp_rng, lift_idx, seq_scan_rng_dst, st);
 }
 
 template <
   class Iter,
   class Result,
+  class Combine_comp_rng,
   class Combine,
   class Lift_comp_rng,
   class Lift
@@ -953,6 +1040,7 @@ template <
 parray<Result> scan(Iter lo,
                     Iter hi,
                     Result id,
+		    const Combine_comp_rng& combine_comp_rng,
                     const Combine& combine,
                     const Lift_comp_rng& lift_comp_rng,
                     const Lift& lift,
@@ -960,7 +1048,7 @@ parray<Result> scan(Iter lo,
   auto lift_idx = [&] (size_t pos, reference_of<Iter> x) {
     return lift(x);
   };
-  return scani(lo, hi, id, combine, lift_comp_rng, lift_idx, st);
+  return scani(lo, hi, id, combine_comp_rng, combine, lift_comp_rng, lift_idx, st);
 }
 
 template <
@@ -975,10 +1063,19 @@ parray<Result> scan(Iter lo,
                     const Combine& combine,
                     const Lift& lift,
                     scan_type st) {
-  auto lift_comp_rng = [&] (Iter lo, Iter hi) {
-    return hi - lo;
+  using output_type = level3::cell_output<Result, Combine>;
+  output_type out(id, combine);
+  using iterator = typename parray<Result>::iterator;
+  auto lift_idx = [&] (size_t pos, reference_of<Iter> x) {
+    return lift(x);
   };
-  return scan(lo, hi, id, combine, lift_comp_rng, lift, st);
+  auto seq_scan_rng_dst = [&] (Result _id, Iter _lo, Iter _hi, iterator outs_lo) {
+    size_t pos = _lo - lo;
+    level4::scan_seq(_lo, _hi, outs_lo, out, _id, [&] (reference_of<Iter> src, Result& dst) {
+      dst = lift_idx(pos++, src);
+    }, st);
+  };
+  return level2::scan(lo, hi, id, combine, lift_idx, seq_scan_rng_dst, st);
 }
     
 } // end namespace
@@ -986,12 +1083,49 @@ parray<Result> scan(Iter lo,
 /*---------------------------------------------------------------------*/
 /* Level 0 reduction */
 
+template <
+  class Iter,
+  class Item,
+  class Combine_comp_rng,
+  class Combine
+  >
+Item reduce(Iter lo,
+	    Iter hi,
+	    Item id,
+	    const Combine_comp_rng& combine_comp_rng,
+	    const Combine& combine) {
+  auto lift = [&] (reference_of<Iter> x) {
+    return x;
+  };
+  auto lift_comp_rng = combine_comp_rng;
+  return level1::reduce(lo, hi, id, combine, lift_comp_rng, lift);
+}
+  
 template <class Iter, class Item, class Combine>
 Item reduce(Iter lo, Iter hi, Item id, const Combine& combine) {
   auto lift = [&] (reference_of<Iter> x) {
     return x;
   };
   return level1::reduce(lo, hi, id, combine, lift);
+}
+
+template <
+  class Iter,
+  class Item,
+  class Combine_comp_rng,
+  class Combine
+>
+parray<Item> scan(Iter lo,
+                  Iter hi,
+                  Item id,
+		  const Combine_comp_rng& combine_comp_rng,
+                  const Combine& combine,
+		  scan_type st) {
+  auto lift_comp_rng = combine_comp_rng;
+  auto lift = [&] (reference_of<Iter> x) {
+    return x;
+  };
+  return level1::scan(lo, hi, id, combine_comp_rng, combine, lift_comp_rng, lift, st);
 }
   
 template <
@@ -1002,7 +1136,8 @@ template <
 parray<Item> scan(Iter lo,
                   Iter hi,
                   Item id,
-                  const Combine& combine, scan_type st) {
+                  const Combine& combine,
+		  scan_type st) {
   auto lift = [&] (reference_of<Iter> x) {
     return x;
   };
