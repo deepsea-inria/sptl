@@ -170,7 +170,7 @@ public:
     if (n == 0) return;
     copy(tmp.begin(), tmp.begin() + std::min(n, sz), begin());
     if (init_sz != n) {
-      fill(begin() + std::min(n, sz), begin() + init_sz, val);
+      sptl::fill(begin() + std::min(n, sz), begin() + init_sz, val);
     }
   }
 
@@ -213,7 +213,7 @@ public:
     value_type value;
      realloc(n);
      if (n == 0) return;
-     fill(begin(), begin() + std::min(n, prefix_sz), value);
+     sptl::fill(begin(), begin() + std::min(n, prefix_sz), value);
   }
 
   template <class Body>

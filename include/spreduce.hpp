@@ -226,10 +226,10 @@ void scan_rec(const parray<Result>& ins,
   int k = Scan_branching_factor;
   size_t n = ins.size();
   size_t m = get_nb_blocks(k, n);
-  auto loop_comp = [&] (size_t i) {
+  auto loop_comp = [&] (size_t _lo, size_t _hi) {
     auto beg = ins.cbegin();
-    size_t lo = get_rng(k, n, i).first;
-    size_t hi = get_rng(k, n, i).second;
+    size_t lo = get_rng(k, n, _lo).first;
+    size_t hi = get_rng(k, n, _hi).second;
     return merge_comp_rng(beg + lo, beg + hi);
   };
   spguard([&] { return merge_comp_rng(ins.cbegin(), ins.cend()); }, [&] {
@@ -249,9 +249,9 @@ void scan_rec(const parray<Result>& ins,
         out.merge(beg + lo, beg + hi, partials[i]);
       };
       if (Merge_comp_rng_is_linear::value) {
-        parallel_for(0l, m, b1);
+        parallel_for((size_t)0, m, b1);
       } else {
-        parallel_for(0l, m, loop_comp, b1);
+        parallel_for((size_t)0, m, loop_comp, b1);
       }
       parray<Result> scans;
       if (std::is_fundamental<Result>::value) {
@@ -268,9 +268,9 @@ void scan_rec(const parray<Result>& ins,
         scan_seq(ins_beg + lo, ins_beg + hi, outs_lo + lo, out, scans[i], st);
       };
       if (Merge_comp_rng_is_linear::value) {
-        parallel_for(0l, m, b2);
+        parallel_for((size_t)0, m, b2);
       } else {
-        parallel_for(0l, m, loop_comp, b2);
+        parallel_for((size_t)0, m, loop_comp, b2);
       }
     }
   }, [&] {
@@ -304,12 +304,12 @@ void scan(Input& in,
   const size_t k = Scan_branching_factor;
   size_t n = in.size();
   size_t m = get_nb_blocks(k, n);
-  auto loop_comp = [&] (size_t i) {
-    size_t lo = get_rng(k, n, i).first;
-    size_t hi = get_rng(k, n, i).second;
+  auto loop_comp = [&] (size_t _lo, size_t _hi) {
+    size_t lo = get_rng(k, n, _lo).first;
+    size_t hi = get_rng(k, n, _hi).second;
     return convert_reduce_comp_rng(lo, hi);
   };
-  spguard([&] { return convert_reduce_comp_rng(0l, n); }, [&] {
+  spguard([&] { return convert_reduce_comp_rng((size_t)0, n); }, [&] {
     if (n <= k) {
       convert_scan(id, in, outs_lo);
     } else {
@@ -327,9 +327,9 @@ void scan(Input& in,
         convert_reduce(in2, partials[i]);
       };
       if (Merge_comp_rng_is_linear::value) {
-        parallel_for(0l, m, b1);
+        parallel_for((size_t)0, m, b1);
       } else {
-        parallel_for(0l, m, loop_comp, b1);
+        parallel_for((size_t)0, m, loop_comp, b1);
       }
       parray<Result> scans;
       if (std::is_fundamental<Result>::value) {
@@ -347,9 +347,9 @@ void scan(Input& in,
         scan(in2, out, scans[i], outs_lo + lo, merge_comp_rng, il, convert_reduce_comp_rng, convert_reduce, convert_scan, seq_convert_scan, st);
       };
       if (Merge_comp_rng_is_linear::value) {
-        parallel_for(0l, m, b2);
+        parallel_for((size_t)0, m, b2);
       } else {
-        parallel_for(0l, m, loop_comp, b2);
+        parallel_for((size_t)0, m, loop_comp, b2);
       }
     }
   }, [&] {
@@ -580,7 +580,7 @@ void scan(Input_iter lo,
           scan_type st) {
   using input_type = level4::random_access_iterator_input<Input_iter>;
   input_type in(lo, hi);
-  auto merge_comp_rng = [&] (Result* lo, Result* hi) {
+  auto merge_comp_rng = [&] (const Result* lo, const Result* hi) {
     return output_comp_rng(lo, hi);
   };
   auto convert_reduce_comp_rng = [&] (size_t lo, size_t hi) {
@@ -625,7 +625,7 @@ void scan(Input_iter lo,
           scan_type st) {
   using input_type = level4::random_access_iterator_input<Input_iter>;
   input_type in(lo, hi);
-  auto merge_comp_rng = [&] (Result* lo, Result* hi) {
+  auto merge_comp_rng = [&] (const Result* lo, const Result* hi) {
     return hi - lo;
   };
   auto convert_reduce_comp_rng = [&] (size_t lo, size_t hi) {
