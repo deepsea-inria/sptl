@@ -6,9 +6,11 @@
 #include <sstream>
 #include <stdio.h>
 #include <iostream>
+#include <fstream>
 
 #include "spperworker.hpp"
 #include "sptime.hpp"
+#include "spcallback.hpp"
 
 #ifndef _SPTL_SPESTIMATOR_H_
 #define _SPTL_SPESTIMATOR_H_

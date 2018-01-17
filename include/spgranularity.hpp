@@ -130,7 +130,7 @@ namespace sptl {
       return;
 #endif
       execmode_type p = my_execmode();
-      if ((p == Sequential) || (p == Force_Sequential)) {
+      if ((p == Sequential) || (p == Force_sequential)) {
         run(Sequential, seq_body_fct);
         return;
       }
@@ -154,24 +154,14 @@ namespace sptl {
         cost_type upper_work = work.mine() + wall_clock::since(timer.mine());
         work.mine() = 0;
         timer.mine() = wall_clock::now();
-        run(Unknown, body_fct);
+        run(Unknown, par_body_fct);
         work.mine() += wall_clock::since(timer.mine());
-        estimator.report(std::max((complexity_type) 1, m), work.mine());
+        estim.report(std::max((complexity_type) 1, m), work.mine());
         work.mine() += upper_work;
         timer.mine() = wall_clock::now();
       } else {
         assert(false);
       }
-    }
-
-    template <
-      class Complexity_measure_fct,
-      class Par_body_fct
-      >
-    void spguard(control_by_prediction& contr,
-                 const Complexity_measure_fct& complexity_measure_fct,
-                 const Par_body_fct& par_body_fct) {
-      spguard(contr, complexity_measure_fct, par_body_fct, par_body_fct);
     }
 
     template <class Last>
@@ -187,7 +177,8 @@ namespace sptl {
     template <const char* estim_name, class ... Types>
     class controller_holder {
     public:
-      static control_by_prediction controller;
+      static
+      control_by_prediction controller;
     };
     
     template <const char* estim_name, class ... Types>
@@ -210,8 +201,8 @@ template <
 void spguard(const Complexity_measure_fct& complexity_measure_fct,
              const Par_body_fct& par_body_fct,
              const Seq_body_fct& seq_body_fct) {
-  using controller_type = controller_holder<dflt_estim_name, Complexity_measure_fct, Par_body_fct, Seq_body_fct>;
-  spguard(controller_type::controller, complexity_measure_fct, par_body_fct, seq_body_fct);
+  using controller_type = granularity::controller_holder<granularity::dflt_estim_name, Complexity_measure_fct, Par_body_fct, Seq_body_fct>;
+  granularity::spguard(controller_type::controller, complexity_measure_fct, par_body_fct, seq_body_fct);
 }
 
 template <
@@ -219,14 +210,14 @@ template <
   class Par_body_fct
   >
 void spguard(const Complexity_measure_fct& complexity_measure_fct,
- const Par_body_fct& par_body_fct) {
-  using controller_type = controller_holder<dflt_estim_name, Complexity_measure_fct, Par_body_fct>;
-  spguard(controller_type::controller, complexity_measure_fct, par_body_fct);
+	     const Par_body_fct& par_body_fct) {
+  using controller_type = granularity::controller_holder<granularity::dflt_estim_name, Complexity_measure_fct, Par_body_fct>;
+  granularity::spguard(controller_type::controller, complexity_measure_fct, par_body_fct);
 }
 
 template <class Par_body_fct>
-void spguard(control_by_force_parallel&, const Par_body_fct& par_body_fct) {
-  run(Force_parallel, par_body_fct);
+void spguard(granularity::control_by_force_parallel&, const Par_body_fct& par_body_fct) {
+  run(granularity::Force_parallel, par_body_fct);
 }
 
 template <
@@ -234,7 +225,7 @@ template <
   class Par_body_fct,
   class Seq_body_fct
   >
-void spguard(control_by_force_parallel& contr,
+void spguard(granularity::control_by_force_parallel& contr,
              const Complexity_measure_fct&,
              const Par_body_fct& par_body_fct,
              const Seq_body_fct&) {
@@ -242,8 +233,8 @@ void spguard(control_by_force_parallel& contr,
 }
 
 template <class Seq_body_fct>
-void spguard(control_by_force_sequential&, const Seq_body_fct& seq_body_fct) {
-  run(Force_sequential, seq_body_fct);
+void spguard(granularity::control_by_force_sequential&, const Seq_body_fct& seq_body_fct) {
+  run(granularity::Force_sequential, seq_body_fct);
 }
 
 // same as above but accepts all arguments to support general case
@@ -252,7 +243,7 @@ template <
   class Par_body_fct,
   class Seq_body_fct
   >
-void spguard(control_by_force_sequential& contr,
+void spguard(granularity::control_by_force_sequential& contr,
              const Complexity_measure_fct&,
              const Par_body_fct&,
              const Seq_body_fct& seq_body_fct) {
@@ -289,29 +280,29 @@ void fork2(const Body_fct1& f1, const Body_fct2& f2) {
   primitive_fork2(f1, f2);
   return;
 #endif
-  execmode_type c = my_execmode();
-  if ((c == Sequential) || (c == Force_sequential)) {
+  granularity::execmode_type c = granularity::my_execmode();
+  if ((c == granularity::Sequential) || (c == granularity::Force_sequential)) {
     f1();
     f2();
-  } else if ((c == Parallel) || (c == Force_parallel)) {
-    primitive_fork(f1, f2);
-  } else if (c == Unknown) {
-    cost_type upper_work = work.mine() + wall_clock::since(timer.mine());
-    work.mine() = 0;
+  } else if ((c == granularity::Parallel) || (c == granularity::Force_parallel)) {
+    primitive_fork2(f1, f2);
+  } else if (c == granularity::Unknown) {
+    cost_type upper_work = granularity::work.mine() + wall_clock::since(granularity::timer.mine());
+    granularity::work.mine() = 0;
     cost_type left_work, right_work;
     primitive_fork2([&] {
-        work.mine() = 0;
-        timer.mine() = wall_clock::now();
-        run(c, f1);
-        left_work = work.mine() + wall_clock::since(timer.mine());
-      }, [&] {
-        work.mine() = 0;
-        timer.mine() = wall_clock::now();
-        run(c, f2);
-        right_work = work.mine() + wall_clock::since(timer.mine());
-      });
-    work.mine() = upper_work + left_work + right_work;
-    timer.mine() = wall_clock::now();
+      granularity::work.mine() = 0;
+      granularity::timer.mine() = wall_clock::now();
+      run(c, f1);
+      left_work = granularity::work.mine() + wall_clock::since(granularity::timer.mine());
+    }, [&] {
+      granularity::work.mine() = 0;
+      granularity::timer.mine() = wall_clock::now();
+      run(c, f2);
+      right_work = granularity::work.mine() + wall_clock::since(granularity::timer.mine());
+    });
+    granularity::work.mine() = upper_work + left_work + right_work;
+    granularity::timer.mine() = wall_clock::now();
   }
 }
 

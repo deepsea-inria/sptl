@@ -52,7 +52,7 @@ public:
   
   void push(Item init) {
     assert(size() >= 0);
-    assert(size() < max_size);
+    assert(size() < max_sz);
     inits[i] = init;
     i++;
   }

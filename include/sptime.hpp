@@ -3,6 +3,8 @@
 #include <sys/time.h>
 #include <execinfo.h>
 
+#include "spmachine.hpp"
+
 #ifndef _SPTL_TIME_H_
 #define _SPTL_TIME_H_
 

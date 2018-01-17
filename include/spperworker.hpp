@@ -11,7 +11,9 @@ namespace perworker {
 
 /*---------------------------------------------------------------------*/
 /* Worker ID number */
-  
+
+namespace {
+    
 static constexpr
 int invalid_worker_id = -1;
 
@@ -37,6 +39,8 @@ public:
 };
 
 std::atomic<int> get_my_id::counter(0);
+
+} // end namespace
 
 /*---------------------------------------------------------------------*/
 /* Cache-aligned fixed-capacity array */
@@ -84,9 +88,8 @@ public:
   }
 
   template <class Body_fct>
-  void iterate(Body_fct& f, int m = -1) {
-    int n = (m == -1) ? size() : nb_workers;
-    for (int i = 0; i < n; i++) {
+  void iterate(Body_fct& f) { 
+    for (int i = 0; i < size(); i++) {
       f(at(i));
     }
   }
@@ -142,8 +145,8 @@ public:
   }
 
   template <class Body_fct>
-  void iterate(const Body_fct& body, int nb_workers = -1) {
-    items.iterate(body, nb_workers);
+  void iterate(const Body_fct& body) {
+    items.iterate(body);
   }
 
 };
