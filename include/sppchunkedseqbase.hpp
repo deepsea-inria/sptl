@@ -56,7 +56,7 @@ template <class Item /*, class Alloc = std::allocator<Item>*/ >
 class pchunkedseq {
 public:
   
-  using seq_type = data::chunkedseq::bootstrapped::deque<Item>;
+  using seq_type = pasl::data::chunkedseq::bootstrapped::deque<Item>;
   
   using value_type = Item;
   using allocator_type = std::allocator<Item>; //Alloc;

@@ -4,8 +4,8 @@
 #include "spparray.hpp"
 #include "sppchunkedseqbase.hpp"
 
-#ifndef _SPTL_DATAPAR_H_
-#define _SPTL_DATAPAR_H_
+#ifndef _SPTL_REDUCE_H_
+#define _SPTL_REDUCE_H_
 
 namespace sptl {
 
@@ -57,9 +57,9 @@ void reduce(Input& in,
       Result dst2;
       out.init(dst2);
       fork2([&] {
-        reduce(in,  out, id, dst,  convert_reduce_comp, convert_reduce, seq_convert_reduce, contr);
+        reduce(in,  out, id, dst,  convert_reduce_comp, convert_reduce, seq_convert_reduce);
       }, [&] {
-        reduce(in2, out, id, dst2, convert_reduce_comp, convert_reduce, seq_convert_reduce, contr);
+        reduce(in2, out, id, dst2, convert_reduce_comp, convert_reduce, seq_convert_reduce);
       });
       out.merge(dst2, dst);
     }
@@ -209,6 +209,11 @@ public:
 
 };
 
+static inline
+bool is_backward_scan(scan_type st) {
+  return (st == backward_inclusive_scan) || (st == backward_exclusive_scan);
+}
+
 template <class Result, class Output, class Merge_comp_rng, class Merge_comp_rng_is_linear>
 void scan_rec(const parray<Result>& ins,
               typename parray<Result>::iterator outs_lo,
@@ -338,7 +343,7 @@ void scan(Input& in,
         size_t lo = get_rng(k, n, i).first;
         size_t hi = get_rng(k, n, i).second;
         Input in2 = in.slice(splits, lo, hi);
-        merge_comp_rng_is_linear il;
+        auto il = merge_comp_rng_is_linear;
         scan(in2, out, scans[i], outs_lo + lo, merge_comp_rng, il, convert_reduce_comp_rng, convert_reduce, convert_scan, seq_convert_scan, st);
       };
       if (Merge_comp_rng_is_linear::value) {
@@ -370,7 +375,7 @@ void scan(Input& in,
           const Output& out,
           Result& id,
           Output_iter outs_lo,
-          const Convert_reduce_comp& convert_reduce_comp_rng,
+          const Convert_reduce_comp_rng& convert_reduce_comp_rng,
           const Convert_reduce& convert_reduce,
           const Convert_scan& convert_scan,
           const Seq_convert_scan& seq_convert_scan,
@@ -886,7 +891,6 @@ namespace dps {
     auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
       dst = lift_idx(pos, x);
     };
-    auto output_comp_rng = combine_comp_rng;
     level3::scan(lo, hi, out, id, outs_lo, lift_idx_dst, seq_scan_rng_dst, st);
   }
   
@@ -935,7 +939,7 @@ public:
   >
   Result f(size_t i, iterator lo, iterator hi, Result id, const Combine& combine, const Lift_idx& lift_idx) {
     Result r = id;
-    data::chunkedseq::extras::for_each(lo, hi, [&] (reference x) {
+    pasl::data::chunkedseq::extras::for_each(lo, hi, [&] (reference x) {
       r = combine(r, lift_idx(i++, x));
     });
     return r;

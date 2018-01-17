@@ -20,7 +20,6 @@ namespace sptl {
 
 int main(int argc, char** argv) {
   deepsea::cmdline::set(argc, argv);
-  int n = deepsea::cmdline::parse_or_default_int("n", 30);
   sptl::ex();
   return 0;
 }
