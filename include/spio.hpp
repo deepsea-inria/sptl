@@ -7,7 +7,6 @@
 #define _SPTL_IO_H_
 
 namespace sptl {
-namespace io {
 
 template <class Item>
 std::ostream& operator<<(std::ostream& out, const parray<Item>& xs) {
@@ -22,7 +21,6 @@ std::ostream& operator<<(std::ostream& out, const parray<Item>& xs) {
   return out;
 }
 
-} // end namespace
 } // end namespace
 
 #endif

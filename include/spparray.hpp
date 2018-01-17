@@ -39,13 +39,13 @@ private:
   void alloc(size_t n) {
     sz = n;
     assert(sz >= 0);
-    value_type* p = sz == 0 ? nullptr : (value_type*)malloc(sz * sizeof(value_type));
+    value_type* p = (sz == 0) ? nullptr : (value_type*)malloc(sz * sizeof(value_type));
     ptr.reset(p);
   }
   
   void destroy() {
-    if (!ptr) {
-      pmem::pdelete<Item, Alloc>(begin(), end());
+    if (! ptr) {
+      pdelete<Item, Alloc>(begin(), end());
     }
     sz = 0;
   }
@@ -57,9 +57,10 @@ private:
   
   void fill(size_t n, const value_type& val) {
     realloc(n);
-    if (n != 0) {
-      pmem::fill(begin(), end(), val);
+    if (n == 0) {
+      return;
     }
+    sptl::fill(begin(), end(), val);
   }
   
   void check(size_t i) const {
@@ -107,17 +108,14 @@ public:
   
   parray(const parray& other) {
     alloc(other.size());if (sz == 0) return;
-    pmem::copy(other.cbegin(), other.cend(), begin());
+    copy(other.cbegin(), other.cend(), begin());
   }
   
   parray(iterator lo, iterator hi) {
     size_t n = hi - lo;
-    if (n < 0) {
-      return;
-    }
     alloc(n);
     if (n == 0) return;
-    pmem::copy(lo, hi, begin());
+    copy(lo, hi, begin());
   }
   
   ~parray() {
@@ -130,7 +128,7 @@ public:
     }
     realloc(other.size());
     if (sz != 0) {
-      pmem::copy(other.cbegin(), other.cend(), begin());
+      copy(other.cbegin(), other.cend(), begin());
     }
     return *this;
   }
@@ -170,9 +168,9 @@ public:
     tmp.prefix_tabulate(n, 0);
     swap(tmp);
     if (n == 0) return;
-    pmem::copy(tmp.begin(), tmp.begin() + std::min(n, sz), begin());
+    copy(tmp.begin(), tmp.begin() + std::min(n, sz), begin());
     if (init_sz != n) {
-      pmem::fill(begin() + std::min(n, sz), begin() + init_sz, val);
+      fill(begin() + std::min(n, sz), begin() + init_sz, val);
     }
   }
 
@@ -185,7 +183,7 @@ public:
     if (n == 0) return;
     size_t m = std::min(tmp.size(), size());
     assert(size() >= m);
-    pmem::copy(tmp.cbegin(), tmp.cbegin()+m, begin());
+    copy(tmp.cbegin(), tmp.cbegin()+m, begin());
   }
   
   void resize(size_t n) {
@@ -202,7 +200,7 @@ public:
     realloc(n);
     if (n == 0) return;
     auto ptr = this->ptr.get();
-    range::parallel_for(0l, prefix_sz, [&] (size_t l, size_t r) { return r - l; }, [&, ptr] (size_t i) {
+    parallel_for((size_t)0, prefix_sz, [&] (size_t l, size_t r) { return r - l; }, [&, ptr] (size_t i) {
       ptr[i] = body(i);
     }, [&, ptr] (size_t l, size_t r) {
       for (size_t i = l; i < r; i++) {
@@ -215,7 +213,7 @@ public:
     value_type value;
      realloc(n);
      if (n == 0) return;
-     pmem::fill(begin(), begin() + std::min(n, prefix_sz), value);
+     fill(begin(), begin() + std::min(n, prefix_sz), value);
   }
 
   template <class Body>
