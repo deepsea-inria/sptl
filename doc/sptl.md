@@ -1,6 +1,6 @@
 % The Series-Parallel Template Library User's Guide
 % Deepsea Project
-% 20 November 2017
+% Version 1.0
 
 Introduction
 ============
@@ -3214,8 +3214,8 @@ Reductions and scans
 --------------------
 
 Parallel-for loops give us the ability to process in parallel over a
-specified range of iterates. However, often, we want to, say, take the
-sum of a given sequence of numbers, or perhaps, find the lowest point
+specified range of iterates. However, often, we rather want to compute
+the sum of a given sequence of numbers or to find the lowest point
 in a given set of points in two-dimensional space. The problem is that
 the parallel-for loop is the wrong tool for this job, because it is
 not safe to use a parallel-for loop to accumulate a value in a shared
@@ -3329,6 +3329,9 @@ an extra function to report the costs. However, the way that
 we are going to report is a little different that the way
 we reported to the parallel-for loop.
 
+*TODO*: update the discussion of reduction operations to match the new
+ implementation.
+
 What we want to report is the *weight* of each item in the input
 sequence. The idea is that the cost of combining any two items in the
 input sequence using the given associative combining operator is the
@@ -3344,10 +3347,25 @@ loop](#weighted-parallel-for), the reduction operation calculates a
 table containing the prefix sums of the weights of the items.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-int max0(const parray<parray<int>>& xss) {
+int max0(const parray<std::pair<parray<int>>& xss) {
   parray<int> id = { std::numeric_limits<int>::lowest() };
-  auto weight = [&] (const parray<int>& xs) {
-    return xs.size();
+  // extract sizes of subarrays of xss
+  parray<size_t> comps(xss.size(), [&] (size_t i) {
+    // take minimum cost of 1 so that the cost of treating the
+    // length-zero array is accounted for
+    return std::max((size_t)1, xss[i].size());
+  });
+  // compute partial sums of sizes of the subarrays
+  parray<size_t> cumuls =
+    scan(comps.begin(), comps.end(), 0, [&] (size_t x, size_t y) {
+      return x + y;
+    }, forward_exclusive_scan);
+  // compute the total sum of sizes of the subarrays
+  size_t total = cumuls[cumuls.size() - 1] + comps[comps.size() - 1];
+  auto first = xss.cbegin();
+  auto combine_comp_rng = [&] (const parray<int>* lo, const parray<int>* hi) {
+    // total weight of subarrays in the range [lo, hi)
+    return cumuls[lo - first] + ((hi == xss.end()) ? total : cumuls[hi - first]);
   };
   auto combine = [&] (const parray<int>& xs1,
                       const parray<int>& xs2) {
@@ -3355,7 +3373,7 @@ int max0(const parray<parray<int>>& xss) {
     return r;
   };
   parray<int> a =
-    reduce(xss.cbegin(), xss.cend(), id, weight, combine);
+    reduce(xss.cbegin(), xss.cend(), id, combine_comp_rng, combine);
   return a[0];
 }
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
