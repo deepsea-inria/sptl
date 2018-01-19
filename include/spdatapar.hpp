@@ -31,9 +31,6 @@ size_t max_index(size_t n, const Item& id, const Comp& comp, const Get& get) {
   };
   using output_type = level3::cell_output<result_type, decltype(combine)>;
   output_type out(res, combine);
-  auto convert_reduce_comp = [&] (input_type& in) {
-    return in.size();
-  };
   auto convert_reduce = [&] (input_type& in, result_type& out) {
     for (size_t i = in.lo; i < in.hi; i++) {
       const Item& x = get(i);
@@ -43,7 +40,7 @@ size_t max_index(size_t n, const Item& id, const Comp& comp, const Get& get) {
     }
   };
   auto seq_convert_reduce = convert_reduce;
-  level4::reduce(in, out, res, res, convert_reduce_comp, convert_reduce, seq_convert_reduce);
+  level4::reduce(in, out, res, res, convert_reduce, seq_convert_reduce);
   return res.first;
 }
   
@@ -66,9 +63,6 @@ size_t max_index(Iter lo, Iter hi, const Item& id, const Comp& comp, const Lift&
       return y;
     }
   };
-  auto lift_comp_rng = [&] (Iter lo, Iter hi) {
-    return hi - lo;
-  };
   auto lift_idx = [&] (size_t i, reference_of<Iter> x) {
     return result_type(i, lift(i, x));
   };
@@ -83,7 +77,7 @@ size_t max_index(Iter lo, Iter hi, const Item& id, const Comp& comp, const Lift&
     }
     return res;
   };
-  return level2::reduce(lo, hi, id2, combine, lift_comp_rng, lift_idx, seq_reduce_rng).first;
+  return level2::reduce(lo, hi, id2, combine, lift_idx, seq_reduce_rng).first;
 }
   
 template <
