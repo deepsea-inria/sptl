@@ -3165,10 +3165,6 @@ int max(const parray<int>& xs) {
 }
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Let us pause for a moment to consider what is the value returned by the
-`max` function when it is passed the empty array (i.e., `max({ })`. In
-this case, the value is going to be the smallest 
-
 As we are going to see [later](#r0-complexity), the work and span cost
 of this operation are linear and logarithmic in the size of the input
 array, implying a good parallel solution to this particular problem.
@@ -3189,13 +3185,13 @@ namespace sptl {
 template <
   class Iter,
   class Item,
-  class Weight,
+  class Combine_comp_rng,
   class Combine
 >
 Item reduce(Iter lo,
             Iter hi,
             Item id,
-            Weight weight,
+            Combine_comp_rng combine_comp_rng,
             Combine combine);
 
 }
@@ -3209,22 +3205,13 @@ an extra function to report the costs. However, the way that
 we are going to report is a little different that the way
 we reported to the parallel-for loop.
 
-*TODO*: update the discussion of reduction operations to match the new
- implementation.
-
-What we want to report is the *weight* of each item in the input
-sequence. The idea is that the cost of combining any two items in the
-input sequence using the given associative combining operator is the
-sum of the weights of the two items. Let us consider an example of
-this pattern. The code below takes as input an array of arrays of
-numbers and returns the largest number contained by the
-subarrays. Now, observe that the cost of performing our `combine`
-operator to any two subarrays `xs1` and `xs2` is the value `xs1.size()
-+ xs2.size()`. It should be clear that our reduce operation can
-calculate these intermediate costs from the `weight` function, which
-we pass to our reduction. Just like the [weight-based parallel-for
-loop](#weighted-parallel-for), the reduction operation calculates a
-table containing the prefix sums of the weights of the items.
+The code below takes as input an array of arrays of numbers and
+returns the largest number contained by the subarrays. Now, observe
+that the cost of performing our `combine` operator to any two
+subarrays `xs1` and `xs2` is the value `xs1.size() + xs2.size()`. It
+should be clear that our reduce operation can calculate these
+intermediate costs from the `combine_comp_rng` function, which we pass
+to our reduction.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
 int max0(const parray<parray<int>>& xss) {
@@ -3442,7 +3429,8 @@ with the corresponding reduce function.
 +---------------------------------+-----------------------------------+
 | [`Combine`](#r0-a)              | Associative combining operator    |
 +---------------------------------+-----------------------------------+
-| [`Weight`](#r0-w)               | Weight function (optional)        |
+| [`Combine_comp -rng`](#r0-w)    | Complexity function for a given   |
+|                                 |range of iterations                |
 +---------------------------------+-----------------------------------+
 
 Table: Template parameters for basic reduce and scan operations.
@@ -3491,19 +3479,19 @@ operator is *associative*.
 
 `f(x, f(y, z)) == f(f(x, y), z)`
 
-#### Weight function {#r0-w}
+#### Complexity function of combine {#r0-w}
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-class Weight;
+class Combine_comp_rng;
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The weight function is a C++ functor that takes a single item and
-returns a non-negative "weight value" describing the size of the
-item. The call operator for the weight function should have the
-following type.
+The combine complexity function is a C++ functor that takes an
+interval of iterations and returns a non-negative complexity value
+describing the cost of combining the items in the range. The call
+operator should have the following type.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-size_type operator()(const Item& x);
+size_type operator()(const Item* lo, const Item* hi);
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ### Complexity {#r0-complexity}
