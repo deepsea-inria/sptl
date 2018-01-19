@@ -3,6 +3,7 @@
 
 #include "spparray.hpp"
 #include "sppstring.hpp"
+#include "sppchunkedseq.hpp"
 
 #ifndef _SPTL_IO_H_
 #define _SPTL_IO_H_
@@ -29,6 +30,19 @@ std::ostream& operator<<(std::ostream& out, const pstring& xs) {
   return out;
 }
 
+template <class value_type, int chunk_capacity, class cache_type>
+std::ostream& operator<<(std::ostream& out, const pasl::data::chunkedseq::bootstrapped::deque<value_type, chunk_capacity, cache_type>& xs) {
+  out << "{ ";
+  for (auto it = xs.cbegin(); it != xs.cend(); it++) {
+    auto x = *it;
+    out << x;
+    if (it+1 != xs.cend())
+      out << ", ";
+  }
+  out << " }";
+  return out;
+}
+  
 } // end namespace
 
 #endif

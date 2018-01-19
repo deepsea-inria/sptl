@@ -32,7 +32,7 @@ void reduce(Input_iter lo,
   };
   auto convert_reduce = [&] (input_type& in, Result& dst) {
     size_t i = in.lo - lo;
-    data::chunkedseq::extras::for_each_segment(in.lo, in.hi, [&] (pointer lo, pointer hi) {
+    pasl::data::chunkedseq::extras::for_each_segment(in.lo, in.hi, [&] (pointer lo, pointer hi) {
       Result tmp;
       lift_rng_dst(i, lo, hi, tmp);
       out.merge(tmp, dst);
@@ -41,7 +41,7 @@ void reduce(Input_iter lo,
   };
   auto seq_convert_reduce = [&] (input_type& in, Result& dst) {
     size_t i = in.lo - lo;
-    data::chunkedseq::extras::for_each_segment(in.lo, in.hi, [&] (pointer lo, pointer hi) {
+    pasl::data::chunkedseq::extras::for_each_segment(in.lo, in.hi, [&] (pointer lo, pointer hi) {
       Result tmp;
       seq_reduce_rng_dst(i, lo, hi, tmp);
       out.merge(tmp, dst);
