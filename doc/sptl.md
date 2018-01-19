@@ -3347,25 +3347,19 @@ loop](#weighted-parallel-for), the reduction operation calculates a
 table containing the prefix sums of the weights of the items.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-int max0(const parray<std::pair<parray<int>>& xss) {
+int max0(const parray<parray<int>>& xss) {
   parray<int> id = { std::numeric_limits<int>::lowest() };
-  // extract sizes of subarrays of xss
-  parray<size_t> comps(xss.size(), [&] (size_t i) {
-    // take minimum cost of 1 so that the cost of treating the
-    // length-zero array is accounted for
-    return std::max((size_t)1, xss[i].size());
-  });
-  // compute partial sums of sizes of the subarrays
-  parray<size_t> cumuls =
-    scan(comps.begin(), comps.end(), 0, [&] (size_t x, size_t y) {
-      return x + y;
-    }, forward_exclusive_scan);
+  // compute partial sums of the sizes of the subarrays
+  parray<size_t> pfxsums =
+    sums(xss.size(), [&] (size_t i) {
+      // make minimum cost be 1 so that the cost of treating the
+      // length-zero array is accounted for
+      return std::max((size_t)1, xss[i].size());
+    });
   // compute the total sum of sizes of the subarrays
-  size_t total = cumuls[cumuls.size() - 1] + comps[comps.size() - 1];
-  auto first = xss.cbegin();
   auto combine_comp_rng = [&] (const parray<int>* lo, const parray<int>* hi) {
     // total weight of subarrays in the range [lo, hi)
-    return cumuls[lo - first] + ((hi == xss.end()) ? total : cumuls[hi - first]);
+    return pfxsums[lo - xss.cbegin()] + pfxsums[hi - xss.cbegin()];
   };
   auto combine = [&] (const parray<int>& xs1,
                       const parray<int>& xs2) {
