@@ -1,7 +1,7 @@
 
 #include <memory>
 
-#include "spmem.hpp"
+#include "spmemory.hpp"
 
 #ifndef _SPTL_PARRAY_H_
 #define _SPTL_PARRAY_H_
