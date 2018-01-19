@@ -2771,11 +2771,11 @@ void parallel_for(Iter lo, Iter hi, Body body);
 }
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The first of data-parallel operations we are going to consider is a
-looping construct that is useful for making changes to memory. For
-now, we are going to assume that each iterate of our loops take
-constant time. In the next section, we show how we can handle in an
-effective manner loop bodies that are not constant time.
+The first of the operations we are going to consider is a looping
+construct that is useful for parallel iteration. For now, we are going
+to assume that each iteration of the loop takes constant time. In the
+next section, we show how to handle the case of a loop with a
+non-constant-time body.
 
 Let us begin by considering example code. The following program uses a
 parallel-for loop to assign each position `i` in `xs` to the value
@@ -2838,22 +2838,29 @@ file [parallelfor.cpp].
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
 namespace sptl {
 
-template <class Iter, class Body, class Comp>
-void parallel_for(Iter lo, Iter hi, Comp comp, Body body);
+template <
+  class Iter,
+  class Body,
+  class Comp_rng
+>
+void parallel_for(Iter lo,
+                  Iter hi, Comp_rng comp_rng,
+                  Body body);
 
 }
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When the loop body does not take constant time, that is, the loop body
-takes time in proportion to a known quantity, our code needs to
-provide a runction of that quantity to the looping construct in order
-for the loop to find an efficient schedule for the loop iterations. To
-see how this reporting is done, let us consider a program that
-computes the product of a dense matrix by a dense vector. Our matrix
-is $\mathtt{n} \times \mathtt{n}$ and is laid out in memory in row
-major format. In the following example, we call `dmdmult1` to compute
-the vector resulting from the multiplication of matrix `mtx` and
-vector `vec`.
+When the loop body does not take constant time, the client of the loop
+must specify a complexity function for the loop. The complexity
+function itself specifies, in particular, the combined cost of
+performing a given range of iterations.
+
+To see how to specify the complexity function, let us consider a
+program that computes the product of a dense matrix by a dense
+vector. Our matrix is $\mathtt{n} \times \mathtt{n}$ and is laid out
+in memory in row major format. In the following example, we call
+`dmdmult1` to compute the vector resulting from the multiplication of
+matrix `mtx` and vector `vec`.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
 parray<double> mtx = { 1.1, 2.1, 0.3, 5.8,
@@ -2885,144 +2892,29 @@ double ddotprod(size_type n, const double* row, const double* vec);
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now, we see that the body of our `dmdvmult1` function uses a
-parallel-for loop to fill each cell in the result vector. The
-complexity function `comp` describes the approximate cost of
-performing one loop iterate, which is the same as performing one dot
-product operation on a specified row.
+parallel-for loop to fill each cell in the result vector with the
+result of the cooresponding dot product. The complexity function
+`comp_rng` represents the cost of performing the dot products in the
+range `[lo, hi)`.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
 parray<double> dmdvmult1(const parray<double>& mtx, const parray<double>& vec) {
   size_type n = vec.size();
   parray<double> result(n);
-  auto comp = [&] (size_type i) {
-    return n;
-  };
-  parallel_for(0L, n, comp, [&] (size_type i) {
-    result[i] = ddotprod(n, mtx.cbegin()+(i*n), vec.begin());
-  });
-  return result;
-}
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The above code is perfectly fine for most purposes, because the
-granularity-control algorithm of sptl should be able to use the
-complexity function to schedule loop iterations efficiently. However,
-this particular type of parallel-for loop imposes scheduling-related
-overhead that is important to be aware of. In particular, inside the
-implementation of this particular parallel-for loop, there is an
-operation that is being called to precompute the cost of computing any
-subrange of the parallel-for loop iterations.
-
-### The `weights` operation {#pfor-weights}
-
-This operation is a function which takes a number `n` and a weight
-function `w` and returns a *weight table*.
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-template <class Weight>
-parray<size_type> weights(size_type n, Weight weight);
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The result returned by the call `weights(n, w)` is the sequence `[0,
-w(0), w(0)+w(1), w(0)+w(1)+w(2), ..., w(0)+...+w(n-1)]`. Notice that
-the size of the value returned by the `weights` function is always
-`n+1`. The work and span cost of this operation are linear and
-logarithmic in `n`, respectively.
-
-Let us consider how the range-based parallel-for loop in `dmdvmult2`
-would call the weights function. Suppose that `n` = 4. Now,
-internally, the parallel-for loop is going to compute a weight table
-that looks the same as `w` in the code below.
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-parray<size_type> w = weights(4, comp);
-
-std::cout << "w = " << w << std::endl;
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The output is going to be as shown below.
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-w = { 0, 4, 8, 12, 16 }
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-For one more example, let us consider an application of the `weights`
-function where the given weight function is one that returns the value
-of its current position.
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-parray<size_type> w = weights(4, [&] (size_type i) {
-  return i;
-});
-
-std::cout << "w = " << w << std::endl;
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The output is the following.
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-w = { 0, 0, 1, 3, 6 }
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Returning to our `dmdvmult2` example, we can now see that the work and
-span cost of calculating the weights table are linear and logarithmic
-in `n`, respectively. Since the total cost of the multiplication is
-$O(\mathtt{n}^2)$, the cost of calculating the weights table is
-relatively negligible and can therefore be disregarded in this
-case. Nevertheless, in other cases, we may want to avoid the cost of
-calculating the weights table. To do so, we need to consider the
-*range-based* parallel-for loop.
-
-### Range-based complexity functions for non-constant-time loop bodies
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-namespace sptl {
-namespace range {
-
-template <
-  class Iter,
-  class Body,
-  class Comp_rng
->
-void parallel_for(Iter lo,
-                  Iter hi, Comp_rng comp_rng,
-                  Body body);
-
-} }
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The idea here is that, instead of reporting the cost of computing an
-individual iterate, we report the cost of a given range. The function
-`comp_rng` is going to calculate and return exactly this value. The
-code below shows one way that we can make this modification to our
-`dmdvmult2` function.
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-parray<double> dmdvmult2(const parray<double>& mtx, const parray<double>& vec) {
-  size_type n = vec.size();
-  parray<double> result(n);
   auto comp_rng = [&] (size_type lo, size_type hi) {
-    return (hi - lo) * n;
+    return n * (hi - lo);
   };
-  range::parallel_for(0L, n, comp_rng, [&] (size_type i) {
-    result[i] = ddotprod(n, mtx.cbegin()+(i*n), vec.begin());
+  parallel_for((size_t)0, n, comp_rng, [&] (size_type i) {
+    result[i] = ddotprod(n, mtx.cbegin() +( i * n), vec.begin());
   });
   return result;
 }
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The idea is that instead of reporting the cost of computing the dot
-product on an individual row, we instead report the cost of performing
-a sequence of dot products on a specified range. In particular, the
-`comp_rng` function calculates the cost of performing `hi-lo` dot
-products. In this way, we have bypassed having to calculate the
-weights table by providing such a range-based complexity function.
 
 ### Sequential-alternative loop bodies {#pfor-sequential-alt}
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
 namespace sptl {
-namespace range {
 
 template <
   class Iter,
@@ -3036,7 +2928,7 @@ void parallel_for(Iter lo,
                   Body body,
                   Seq_body_rng seq_body_rng);
 
-} }
+}
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Let us suppose that we have some highly optimized sequential algorithm
@@ -3058,7 +2950,7 @@ parray<double> dmdvmult3(const parray<double>& mtx, const parray<double>& vec) {
   auto comp_rng = [&] (size_type lo, size_type hi) {
     return (hi - lo) * n;
   };
-  range::parallel_for(0L, n, comp_rng, [&] (size_type i) {
+  parallel_for((size_type)0, n, comp_rng, [&] (size_type i) {
     result[i] = ddotprod(n, mtx.cbegin()+(i*n), vec.begin());
   }, [&] (size_type lo, size_type hi) {
     for (size_type i = lo; i < hi; i++) {
@@ -3110,9 +3002,6 @@ the different version of our parallel-for function.
 | [`Body`](#lp-i)                 | Loop body                         |
 +---------------------------------+-----------------------------------+
 | [`Seq_body_rng`](#lp-s-i)       | Sequentialized version of the body|
-+---------------------------------+-----------------------------------+
-| [`Comp`](#lp-c)                 | Complexity function for a         |
-|                                 |specified iteration                |
 +---------------------------------+-----------------------------------+
 | [`Comp_rng`](#lp-c-r)           | Complexity function for a         |
 |                                 |specified range of iterations      |
@@ -3172,15 +3061,6 @@ This method is called by the scheduler when a given range of loop
 iterates is determined to be too small to benefit from parallel
 execution. This range to be executed sequentially is the right-open
 range [`lo`, `hi`).
-
-#### Complexity function {#lp-c}
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-class Comp;
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The complexity-function class must provide a call operator of the
-following type.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
 size_type operator()(Iter it);
