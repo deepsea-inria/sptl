@@ -101,17 +101,7 @@ namespace sptl {
     void run(execmode_type c, const Body_fct& body_fct) {
       execmode.mine().block(c, body_fct);
     }
-    
-    template <class Seq_body_fct>
-    void run_and_report(complexity_type m,
-			const Seq_body_fct& seq_body_fct,
-			estimator& estimator) {
-      auto start = cycle_counter::now();
-      run(Sequential, seq_body_fct);
-      auto elapsed = cycle_counter::since(start);
-      estimator.report(std::max((complexity_type)1, m), elapsed);
-    }
-            
+                
     template <
       class Complexity_measure_fct,
       class Par_body_fct,
@@ -139,7 +129,10 @@ namespace sptl {
         return;
       }
       estimator& estim = contr.get_estimator();
-      execmode_type c = (estim.is_undefined()) ? Unknown : p;
+      execmode_type c = p;
+      if (estim.is_undefined() && (p != Sequential)) {
+	c = Unknown;
+      }
       complexity_type m = complexity_measure_fct();
       if (c == Parallel) {
         complexity_type comp = std::max((complexity_type)1, m);
@@ -147,7 +140,10 @@ namespace sptl {
         c = (pred <= kappa) ? Sequential : Parallel;
       }
       if (c == Sequential) {
-        run_and_report(m, seq_body_fct, estim);
+	auto start = cycle_counter::now();
+	run(Sequential, seq_body_fct);
+	auto elapsed = cycle_counter::since(start);
+	estim.report(std::max((complexity_type)1, m), elapsed);
       } else if (c == Parallel) {
         run(Parallel, par_body_fct);
       } else if (c == Unknown) {
