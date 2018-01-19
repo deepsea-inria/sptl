@@ -2,6 +2,7 @@
 #include <ostream>
 
 #include "spparray.hpp"
+#include "sppstring.hpp"
 
 #ifndef _SPTL_IO_H_
 #define _SPTL_IO_H_
@@ -18,6 +19,13 @@ std::ostream& operator<<(std::ostream& out, const parray<Item>& xs) {
       out << ", ";
   }
   out << " }";
+  return out;
+}
+
+std::ostream& operator<<(std::ostream& out, const pstring& xs) {
+  for (auto it = xs.cbegin(); it != xs.cend(); it++) {
+    out << *it;
+  }
   return out;
 }
 
