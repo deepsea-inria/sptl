@@ -1,5 +1,5 @@
 
-#include "spdatapar.hpp"
+#include "spdataparallel.hpp"
 
 #ifndef _SPTL_SORT_H_
 #define _SPTL_SORT_H_
