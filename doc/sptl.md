@@ -3429,7 +3429,7 @@ with the corresponding reduce function.
 +---------------------------------+-----------------------------------+
 | [`Combine`](#r0-a)              | Associative combining operator    |
 +---------------------------------+-----------------------------------+
-| [`Combine_comp -rng`](#r0-w)    | Complexity function for a given   |
+| [`Combine_comp_rng`](#r0-w)     | Complexity function for a given   |
 |                                 |range of iterations                |
 +---------------------------------+-----------------------------------+
 
@@ -3619,14 +3619,14 @@ template <
   class Iter,
   class Result,
   class Combine,
-  class Lift_comp,
+  class Lift_comp_rng,
   class Lift
 >
 Result reduce(Iter lo,
               Iter hi,
               Result id,
               Combine combine,
-              Lift_comp lift_comp,
+              Lift_comp_rng lift_comp_rng,
               Lift lift);
 
 template <
@@ -3634,7 +3634,7 @@ template <
   class Result,
   class Combine_comp,
   class Combine,
-  class Lift_comp,
+  class Lift_comp_rng,
   class Lift
 >
 Result reduce(Iter lo,
@@ -3642,7 +3642,7 @@ Result reduce(Iter lo,
               Result id,
               Combine_comp combine_comp,
               Combine combine,
-              Lift_comp lift_comp,
+              Lift_comp_rng lift_comp_rng,
               Lift lift);
 } }
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3667,32 +3667,17 @@ parray<Result> scan(Iter lo,
 template <
   class Iter,
   class Result,
+  class Combine_comp_rng,
   class Combine,
-  class Lift_comp,
+  class Lift_comp_rng,
   class Lift
 >
 parray<Result> scan(Iter lo,
                     Iter hi,
                     Result id,
+		    Combine_comp_rng combine_comp_rng,
                     Combine combine,
-                    Lift_comp lift_comp,
-                    Lift lift,
-                    scan_type st);
-
-template <
-  class Iter,
-  class Result,
-  class Combine_comp,
-  class Combine,
-  class Lift_comp,
-  class Lift
->
-parray<Result> scan(Iter lo,
-                    Iter hi,
-                    Result id,
-                    Combine_comp combine_comp,
-                    Combine combine,
-                    Lift_comp lift_comp,
+                    Lift_comp_rng lift_comp_rng,
                     Lift lift,
                     scan_type st);
 
@@ -3732,17 +3717,20 @@ int max1(const parray<parray<int>>& xss) {
   auto lo = xss.cbegin();
   auto hi = xss.cend();
   int id = std::numeric_limits<int>::lowest();
-  auto combine_comp [&]
   auto combine = [&] (int x, int y) {
     return std::max(x, y);
   };
-  auto lift_comp = [&] (const parray<int>& xs) {
-    return xs.size();
+  parray<size_t> pfxsums =
+    sums(xss.size(), [&] (size_t i) {
+      return std::max((size_t)1, xss[i].size());
+    });
+  auto lift_comp_rng = [&] (const parray<int>* lo, const parray<int>* hi) {
+    return pfxsums[lo - xss.cbegin()] + pfxsums[hi - xss.cbegin()];
   };
   auto lift = [&] (const parray<int>& xs) {
     return max(xs);
   };
-  return level1::reduce(lo, hi, id, combine, lift_comp, lift);
+  return level1::reduce(lo, hi, id, combine, lift_comp_rng, lift);
 }
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -3790,14 +3778,14 @@ template <
   class Iter,
   class Result,
   class Combine,
-  class Lift_comp_idx,
+  class Lift_comp_rng,
   class Lift_idx
 >
 Result reducei(Iter lo,
                Iter hi,
                Result id,
                Combine combine,
-               Lift_comp_idx lift_comp_idx,
+               Lift_comp_rng lift_comp_rng,
                Lift_idx lift_idx);
 
 template <
@@ -3805,7 +3793,7 @@ template <
   class Result,
   class Combine_comp,
   class Combine,
-  class Lift_comp_idx,
+  class Lift_comp_rng,
   class Lift_idx
 >
 Result reducei(Iter lo,
@@ -3813,7 +3801,7 @@ Result reducei(Iter lo,
                Result id,
                Combine_comp combine_comp,
                Combine combine,
-               Lift_comp_idx lift_comp_idx,
+               Lift_comp_rng lift_comp_rng,
                Lift_idx lift_idx);
 
 } }
@@ -3840,14 +3828,14 @@ template <
   class Iter,
   class Result,
   class Combine,
-  class Lift_comp_idx,
+  class Lift_comp_rng,
   class Lift_idx
 >
 parray<Result> scani(Iter lo,
                      Iter hi,
                      Result id,
                      Combine combine,
-                     Lift_comp_idx lift_comp_idx,
+                     Lift_comp_rng lift_comp_rng,
                      Lift_idx lift_idx,
                      scan_type st);
 
@@ -3856,7 +3844,7 @@ template <
   class Result,
   class Combine_comp,
   class Combine,
-  class Lift_comp_idx,
+  class Lift_comp_rng,
   class Lift_idx
 >
 parray<Result> scani(Iter lo,
@@ -3864,7 +3852,7 @@ parray<Result> scani(Iter lo,
                      Result id,
                      Combine_comp combine_comp,
                      Combine combine,
-                     Lift_comp_idx lift_comp_idx,
+                     Lift_comp_rng lift_comp_rng,
                      Lift_idx lift_idx,
                      scan_type st);
 
@@ -3884,28 +3872,25 @@ the item (i.e., $\mathtt{lift\_idx}(i, xs_i)$).
 
 ##### Template parameters
 
-+----------------------------------+-----------------------------------+
-| Template parameter               | Description                       |
-+==================================+===================================+
-| [`Result`](#r1-r)                | Type of the result value to be    |
-|                                  |returned by the reduction          |
-+----------------------------------+-----------------------------------+
-| [`Lift`](#r1-l)                  | Lifting operator                  |
-+----------------------------------+-----------------------------------+
-| [`Lift_idx`](#r1-li)             | Index-passing lifting operator    |
-+----------------------------------+-----------------------------------+
-| [`Combine`](#r1-comb)            | Associative combining operator    |
-+----------------------------------+-----------------------------------+
-| [`Combine_comp`](#r1-comb-comp)  | Complexity function associated    |
-|                                  |with the combining operator        |
-+----------------------------------+-----------------------------------+
-| [`Lift_comp`](#r1-l-c)           | Complexity function associated    |
-|                                  |with the lift funciton             |
-+----------------------------------+-----------------------------------+
-| [`Lift_comp_idx`](#r1-l-c-i)     | Index-passing lift complexity     |
-|                                  |function                           |
-+----------------------------------+-----------------------------------+
-
++------------------------------------+-----------------------------------+
+| Template parameter                 | Description                       |
++====================================+===================================+
+| [`Result`](#r1-r)                  | Type of the result value to be    |
+|                                    |returned by the reduction          |
++------------------------------------+-----------------------------------+
+| [`Lift`](#r1-l)                    | Lifting operator                  |
++------------------------------------+-----------------------------------+
+| [`Lift_idx`](#r1-li)               | Index-passing lifting operator    |
++------------------------------------+-----------------------------------+
+| [`Combine`](#r1-comb)              | Associative combining operator    |
++------------------------------------+-----------------------------------+
+|[`Combine_comp_rng`](#r1-comb-comp) | Complexity function associated    |
+|                                    |with the combining operator        |
++------------------------------------+-----------------------------------+
+| [`Lift_comp_rng`](#r1-l-c)         | Complexity function associated    |
+|                                    |with the lift funciton             |
++------------------------------------+-----------------------------------+
+		     
 Table: Template parameters that are introduced in level 1.
 
                  
@@ -3967,22 +3952,23 @@ Result operator()(const Result& x, const Result& y);
 ###### Complexity function for combine {#r1-comb-comp}
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-class Combine_comp;
+class Combine_comp_rng;
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The combine-complexity function is a C++ functor that takes a
-reference on an item and returns a non-negative number of type
-`size_type`. The `Combine_comp` class should provide a call operator
-of the following type.
+The combine-complexity function is a C++ functor that takes a range of
+items to be combined and returns a non-negative number of type
+`size_type` representing the work complexity of performing the
+reduction. The `Combine_comp` class should provide a call operator of
+the following type.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-size_type operator()(const Result& x, const Result& y);
+size_type operator()(const Result* lo, const Result* hi);
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ###### Complexity function for lift {#r1-l-c}
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-class Lift_comp;
+class Lift_comp_rng;
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The lift-complexity function is a C++ functor that takes a reference
@@ -3991,22 +3977,7 @@ on an item and returns a non-negative number of type `size_type`. The
 type.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-size_type operator()(const Item& x);
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-###### Index-passing lift-complexity function {#r1-l-c-i}
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-class Lift_comp_idx;
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The lift-complexity function is a C++ functor that takes an index and
-an reference on an item and returns a non-negative number of type
-`size_type`. The `Lift_comp_idx` class should provide a call operator of
-the following type.
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-size_type operator()(size_type pos, const Item& x);
+size_type operator()(Iter lo, Iter hi);
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ##### Complexity
@@ -4076,7 +4047,6 @@ template <
   class Iter,
   class Result,
   class Combine,
-  class Lift_comp_rng,
   class Lift_idx,
   class Seq_reduce_rng
 >
@@ -4084,14 +4054,12 @@ Result reduce(Iter lo,
               Iter hi,
               Result id,
               Combine combine,
-              Lift_comp_rng lift_comp_rng,
               Lift_idx lift_idx,
               Seq_reduce_rng seq_reduce_rng);
 
 template <
   class Iter,
   class Result,
-  class Combine_comp,
   class Combine,
   class Lift_comp_rng,
   class Lift_idx,
@@ -4100,7 +4068,6 @@ template <
 Result reduce(Iter lo,
               Iter hi,
               Result id,
-              Combine_comp combine_comp,
               Combine combine,
               Lift_comp_rng lift_comp_rng,
               Lift_idx lift_idx,
@@ -4125,7 +4092,6 @@ parray<Result> scan(Iter lo,
                     Iter hi,
                     Result id,
                     Combine combine,
-                    Lift_comp_rng lift_comp_rng,
                     Lift_idx lift_idx,
                     Seq_reduce_rng seq_reduce_rng,
                     scan_type st);
@@ -4133,7 +4099,7 @@ parray<Result> scan(Iter lo,
 template <
   class Iter,
   class Result,
-  class Combine_comp,
+  class Combine_comp_rng,
   class Combine,
   class Lift_comp_rng,
   class Lift_idx,
@@ -4142,7 +4108,7 @@ template <
 parray<Result> scan(Iter lo,
                     Iter hi,
                     Result id,
-                    Combine_comp combine_comp,
+                    Combine_comp_rng combine_comp_rng,
                     Combine combine,
                     Lift_comp_rng lift_comp_rng,
                     Lift_idx lift_idx,
@@ -4170,15 +4136,15 @@ int max2(const parray<parray<int>>& xss) {
   const_iterator lo = xss.cbegin();
   const_iterator hi = xss.cend();
   int id = std::numeric_limits<int>::lowest();
-  parray<size_type> w = weights(xss.size(), [&] (const parray<int>& xs) {
-    return xs.size();
-  });
   auto combine = [&] (int x, int y) {
     return std::max(x, y);
   };
-  const_iterator b = lo;
-  auto lift_comp_rng = [&] (const_iterator lo, const_iterator hi) {
-    return w[hi - b] - w[lo - b];
+  parray<size_t> pfxsums =
+    sums(xss.size(), [&] (size_t i) {
+      return std::max((size_t)1, xss[i].size());
+    });
+  auto lift_comp_rng = [&] (const parray<int>* lo, const parray<int>* hi) {
+    return pfxsums[lo - xss.cbegin()] + pfxsums[hi - xss.cbegin()];
   };
   auto lift_idx = [&] (int, const parray<int>& xs) {
     return max(xs);
@@ -4286,6 +4252,21 @@ template <
   class Input_iter,
   class Output,
   class Result,
+  class Lift_idx_dst,
+  class Seq_reduce_rng_dst
+>
+void reduce(Input_iter lo,
+            Input_iter hi,
+            Output out,
+            Result id,
+            Result& dst,
+            Lift_idx_dst lift_idx_dst,
+            Seq_reduce_rng_dst seq_reduce_rng_dst);
+
+template <
+  class Input_iter,
+  class Output,
+  class Result,
   class Lift_comp_rng,
   class Lift_idx_dst,
   class Seq_reduce_rng_dst
@@ -4299,8 +4280,33 @@ void reduce(Input_iter lo,
             Lift_idx_dst lift_idx_dst,
             Seq_reduce_rng_dst seq_reduce_rng_dst);
 
+} }
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
+namespace sptl {
+namespace level3 {
+
 template <
   class Input_iter,
+  class Output,
+  class Result,
+  class Output_iter,
+  class Lift_idx_dst,
+  class Seq_scan_rng_dst
+>
+void scan(Input_iter lo,
+          Input_iter hi,
+          Output out,
+          Result& id,
+          Output_iter outs_lo,
+          Lift_idx_dst lift_idx_dst,
+          Seq_scan_rng_dst seq_scan_rng_dst,
+          scan_type st);
+
+template <
+  class Input_iter,
+  class Output_comp_rng,
   class Output,
   class Result,
   class Output_iter,
@@ -4310,6 +4316,7 @@ template <
 >
 void scan(Input_iter lo,
           Input_iter hi,
+	  Output_comp_rng output_comp_rng,
           Output out,
           Result& id,
           Output_iter outs_lo,
@@ -4333,18 +4340,21 @@ int max3(const parray<parray<int>>& xss) {
   using const_iterator = typename parray<parray<int>>::const_iterator;
   const_iterator lo = xss.cbegin();
   const_iterator hi = xss.cend();
+  auto output_comp_rng = [&] (const Result* lo, const Result* hi) {
+    return hi - lo;
+  };
   int id = std::numeric_limits<int>::lowest();
-  parray<size_type> w = weights(xss.size(), [&] (const parray<int>& xs) {
-    return xs.size();
-  });
   auto combine = [&] (int x, int y) {
     return std::max(x, y);
   };
   using output_type = level3::cell_output<int, decltype(combine)>;
   output_type out(id, combine);
-  const_iterator b = lo;
-  auto lift_comp_rng = [&] (const_iterator lo, const_iterator hi) {
-    return w[hi - b] - w[lo - b];
+  parray<size_t> pfxsums =
+    sums(xss.size(), [&] (size_t i) {
+      return std::max((size_t)1, xss[i].size());
+    });
+  auto lift_comp_rng = [&] (const parray<int>* lo, const parray<int>* hi) {
+    return pfxsums[lo - xss.cbegin()] + pfxsums[hi - xss.cbegin()];
   };
   auto lift_idx_dst = [&] (int, const parray<int>& xs, int& result) {
     result = max(xs);
@@ -4359,7 +4369,7 @@ int max3(const parray<parray<int>>& xss) {
     result = m;
   };
   int result;
-  level3::reduce(lo, hi, out, id, result, lift_comp_rng,
+  level3::reduce(lo, hi, output_comp_rng, out, id, result, lift_comp_rng,
                  lift_idx_dst, seq_reduce_rng);
   return result;
 }
@@ -4694,7 +4704,6 @@ template <
   class Input,
   class Output,
   class Result,
-  class Convert_reduce_comp,
   class Convert_reduce,
   class Seq_convert_reduce
 >
@@ -4702,17 +4711,37 @@ void reduce(Input& in,
             Output out,
             Result id,
             Result& dst,
-            Convert_reduce_comp convert_comp,
-            Convert_reduce convert,
+            Convert_reduce convert_reduce,
             Seq_convert_reduce seq_convert);
 
 template <
   class Input,
   class Output,
   class Result,
+  class Convert_reduce_comp_rng,
+  class Convert_reduce,
+  class Seq_convert_reduce
+>
+void reduce(Input& in,
+            Output out,
+            Result id,
+            Result& dst,
+            Convert_reduce_comp_rng convert_comp_rng,
+            Convert_reduce convert_reduce,
+            Seq_convert_reduce seq_convert);
+
+} }
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
+namespace sptl {
+namespace level4 {
+
+template <
+  class Input,
+  class Output,
+  class Result,
   class Output_iter,
-  class Merge_comp,
-  class Convert_reduce_comp,
   class Convert_reduce,
   class Convert_scan,
   class Seq_convert_scan
@@ -4721,13 +4750,33 @@ void scan(Input& in,
           Output out,
           Result id,
           Output_iter outs_lo,
-          Merge_comp merge_comp,
-          Convert_reduce_comp convert_reduce_comp,
           Convert_reduce convert_reduce,
           Convert_scan convert_scan,
           Seq_convert_scan seq_convert_scan,
           scan_type st);
-            
+
+template <
+  class Input,
+  class Output,
+  class Result,
+  class Output_iter,
+  class Merge_comp_rng,
+  class Convert_reduce_comp_rng,
+  class Convert_reduce,
+  class Convert_scan,
+  class Seq_convert_scan
+>
+void scan(Input& in,
+          Output out,
+          Result id,
+          Output_iter outs_lo,
+          Merge_comp_rng merge_comp_rng,
+          Convert_reduce_comp_rng convert_reduce_comp_rng,
+          Convert_reduce convert_reduce,
+          Convert_scan convert_scan,
+          Seq_convert_scan seq_convert_scan,
+          scan_type st);
+
 } }
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -4897,9 +4946,6 @@ void keep_if(const Pred& p, Chunkedseq& xs, Chunkedseq& dst) {
   input_type in(xs);
   output_type out;
   Chunkedseq id;
-  auto convert_reduce_comp = [&] (input_type& in) {
-    return in.seq.size();
-  };
   auto convert_reduce = [&] (input_type& in, Chunkedseq& dst) {
     while (! in.seq.empty()) {
       value_type v = in.seq.pop_back();
@@ -4909,8 +4955,7 @@ void keep_if(const Pred& p, Chunkedseq& xs, Chunkedseq& dst) {
     }
   };
   auto seq_convert_reduce = convert_reduce;
-  level4::reduce(in, out, id, dst, convert_reduce_comp,
-                 convert_reduce, seq_convert_reduce);
+  level4::reduce(in, out, id, dst, convert_reduce, seq_convert_reduce);
 }
 
 }
@@ -4927,32 +4972,32 @@ popped off the input sequence as the `reduce` is working.
 
 ##### Template parameters
 
-+---------------------------------+-----------------------------------+
-| Template parameter              | Description                       |
-+=================================+===================================+
-| [`Input`](#r4-i)                | Type of input to the reduction    |
-+---------------------------------+-----------------------------------+
-| [`Convert_reduce`](#r4-c)       | Function to convert the items of a|
-|                                 |given input and then produce a     |
-|                                 |specified reduction on the         |
-|                                 |converted items                    |
-+---------------------------------+-----------------------------------+
-| [`Convert_scan`](#r4-sca)       | Function to convert the items of a|
-|                                 |given input and then produce a     |
-|                                 |specified scan on the converted    |
-|                                 |items                              |
-+---------------------------------+-----------------------------------+
-| [`Seq_convert_scan`](#r4-ssca)  | Alternative sequentialized version|
-|                                 |of the `Convert_scan` function     |
-|                                 |                                   |
-+---------------------------------+-----------------------------------+
-| [`Convert_reduce_comp`](#r4-i-w)|  Complexity function associated   |
-|                                 |with a convert function            |
-|                                 |                                   |
-+---------------------------------+-----------------------------------+
-| [`Seq_convert_reduce`](#r4-s-c) | Alternative sequentialized version|
-|                                 |of the `Convert_reduce` function   |
-+---------------------------------+-----------------------------------+
++------------------------------------+-----------------------------------+
+| Template parameter                 | Description                       |
++====================================+===================================+
+| [`Input`](#r4-i)                   | Type of input to the reduction    |
++------------------------------------+-----------------------------------+
+| [`Convert_reduce`](#r4-c)          | Function to convert the items of a|
+|                                    |given input and then produce a     |
+|                                    |specified reduction on the         |
+|                                    |converted items                    |
++------------------------------------+-----------------------------------+
+| [`Convert_scan`](#r4-sca)          | Function to convert the items of a|
+|                                    |given input and then produce a     |
+|                                    |specified scan on the converted    |
+|                                    |items                              |
++------------------------------------+-----------------------------------+
+| [`Seq_convert_scan`](#r4-ssca)     | Alternative sequentialized version|
+|                                    |of the `Convert_scan` function     |
+|                                    |                                   |
++------------------------------------+-----------------------------------+
+|[`Convert_reduce_comp_rng`](#r4-i-w)|  Complexity function associated   |
+|                                    |with a convert function            |
+|                                    |                                   |
++------------------------------------+-----------------------------------+
+| [`Seq_convert_reduce`](#r4-s-c)    | Alternative sequentialized version|
+|                                    |of the `Convert_reduce` function   |
++------------------------------------+-----------------------------------+
 
 Table: Template parameters that are introduced in level 4.
 
@@ -5039,7 +5084,7 @@ pieces, returning an array which stores the new pieces.
 ##### Convert-reduce complexity function {#r4-i-w}
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-class Convert_reduce_comp;
+class Convert_reduce_comp_rng;
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The convert-complexity function is a C++ functor which returns a
