@@ -2845,7 +2845,7 @@ template <
 >
 void parallel_for(Iter lo,
                   Iter hi,
-		  Comp_rng comp_rng,
+                  Comp_rng comp_rng,
                   Body body);
 
 }
@@ -3004,7 +3004,7 @@ the different version of our parallel-for function.
 +---------------------------------+-----------------------------------+
 | [`Seq_body_rng`](#lp-s-i)       | Sequentialized version of the body|
 +---------------------------------+-----------------------------------+
-| [`Combine_comp_rng`](#lp-c-r)   | Complexity function for a         |
+| [`Comp_rng`](#lp-c-r)           | Complexity function for a         |
 |                                 |specified range of iterations      |
 +---------------------------------+-----------------------------------+
 
@@ -3398,13 +3398,13 @@ namespace sptl {
 template <
   class Iter,
   class Item,
-  class Weight,
+  class Combine_comp_rng,
   class Combine
 >
 parray<Item> scan(Iter lo,
                   Iter hi,
                   Item id,
-                  Weight weight,
+                  Combine_comp_rng combine_comp_rng,
                   Combine combine,
                   scan_type st)
 
@@ -3414,8 +3414,8 @@ parray<Item> scan(Iter lo,
 Just as was the case with reduce, our scan operator has to handle
 non-constant-time associative combining operators. To this end, sptl
 provides the above scan function, which now takes the corresponding
-weight function. An application of this scan function looks just like
-with the corresponding reduce function.
+complexity function. An application of this scan function looks just
+like with the corresponding reduce function.
 
 ### Template parameters
 
