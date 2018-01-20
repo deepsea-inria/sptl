@@ -3004,7 +3004,7 @@ the different version of our parallel-for function.
 +---------------------------------+-----------------------------------+
 | [`Seq_body_rng`](#lp-s-i)       | Sequentialized version of the body|
 +---------------------------------+-----------------------------------+
-| [`Comp_rng`](#lp-c-r)           | Complexity function for a         |
+| [`Combine_comp_rng`](#lp-c-r)   | Complexity function for a         |
 |                                 |specified range of iterations      |
 +---------------------------------+-----------------------------------+
 
@@ -3075,7 +3075,7 @@ cost required to execute the loop body at the iterate `it`.
 #### Range-based compelxity function {#lp-c-r}
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
-class Comp_rng;
+class Combine_comp_rng;
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The range-based complexity-function class must provide a call operator
@@ -3633,7 +3633,7 @@ Result reduce(Iter lo,
 template <
   class Iter,
   class Result,
-  class Combine_comp,
+  class Combine_comp_rng,
   class Combine,
   class Lift_comp_rng,
   class Lift
@@ -3641,7 +3641,7 @@ template <
 Result reduce(Iter lo,
               Iter hi,
               Result id,
-              Combine_comp combine_comp,
+              Combine_comp_rng combine_comp_rng,
               Combine combine,
               Lift_comp_rng lift_comp_rng,
               Lift lift);
@@ -3775,24 +3775,10 @@ Result reducei(Iter lo,
                Combine combine,
                Lift_idx lift_idx);
 
-template <
-  class Iter,
-  class Result,
-  class Combine,
-  class Lift_comp_rng,
-  class Lift_idx
->
-Result reducei(Iter lo,
-               Iter hi,
-               Result id,
-               Combine combine,
-               Lift_comp_rng lift_comp_rng,
-               Lift_idx lift_idx);
 
 template <
   class Iter,
   class Result,
-  class Combine_comp,
   class Combine,
   class Lift_comp_rng,
   class Lift_idx
@@ -3800,7 +3786,6 @@ template <
 Result reducei(Iter lo,
                Iter hi,
                Result id,
-               Combine_comp combine_comp,
                Combine combine,
                Lift_comp_rng lift_comp_rng,
                Lift_idx lift_idx);
@@ -3828,6 +3813,7 @@ parray<Result> scani(Iter lo,
 template <
   class Iter,
   class Result,
+  class Combine_comp_rng,
   class Combine,
   class Lift_comp_rng,
   class Lift_idx
@@ -3835,23 +3821,7 @@ template <
 parray<Result> scani(Iter lo,
                      Iter hi,
                      Result id,
-                     Combine combine,
-                     Lift_comp_rng lift_comp_rng,
-                     Lift_idx lift_idx,
-                     scan_type st);
-
-template <
-  class Iter,
-  class Result,
-  class Combine_comp,
-  class Combine,
-  class Lift_comp_rng,
-  class Lift_idx
->
-parray<Result> scani(Iter lo,
-                     Iter hi,
-                     Result id,
-                     Combine_comp combine_comp,
+                     Combine_comp_rng combine_comp_rng,
                      Combine combine,
                      Lift_comp_rng lift_comp_rng,
                      Lift_idx lift_idx,
