@@ -2844,7 +2844,8 @@ template <
   class Comp_rng
 >
 void parallel_for(Iter lo,
-                  Iter hi, Comp_rng comp_rng,
+                  Iter hi,
+		  Comp_rng comp_rng,
                   Body body);
 
 }
