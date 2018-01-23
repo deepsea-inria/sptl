@@ -335,7 +335,7 @@ template <
   class Seq_convert_scan
 >
 void scan(Input& in,
-	  const Merge_comp_rng& merge_comp_rng,
+          const Merge_comp_rng& merge_comp_rng,
           const Output& out,
           Result& id,
           Output_iter outs_lo,
@@ -532,7 +532,7 @@ template <
 >
 void scan(Input_iter lo,
           Input_iter hi,
-	  const Output_comp_rng& output_comp_rng,
+          const Output_comp_rng& output_comp_rng,
           const Output& out,
           Result& id,
           Output_iter outs_lo,
@@ -728,7 +728,7 @@ template <
 parray<Result> scan(Iter lo,
                     Iter hi,
                     Result id,
-		    const Combine_comp_rng& combine_comp_rng,
+                    const Combine_comp_rng& combine_comp_rng,
                     const Combine& combine,
                     const Lift_comp_rng& lift_comp_rng,
                     const Lift_idx& lift_idx,
@@ -952,7 +952,7 @@ template <
 parray<Result> scani(Iter lo,
                      Iter hi,
                      Result id,
-		     const Combine_comp_rng& combine_comp_rng,
+                     const Combine_comp_rng& combine_comp_rng,
                      const Combine& combine,
                      const Lift_comp_rng& lift_comp_rng,
                      const Lift_idx& lift_idx,
@@ -980,7 +980,7 @@ template <
 parray<Result> scan(Iter lo,
                     Iter hi,
                     Result id,
-		    const Combine_comp_rng& combine_comp_rng,
+                    const Combine_comp_rng& combine_comp_rng,
                     const Combine& combine,
                     const Lift_comp_rng& lift_comp_rng,
                     const Lift& lift,
@@ -1122,10 +1122,10 @@ template <
   class Combine
   >
 Item reduce(Iter lo,
-	    Iter hi,
-	    Item id,
-	    const Combine_comp_rng& combine_comp_rng,
-	    const Combine& combine) {
+            Iter hi,
+            Item id,
+            const Combine_comp_rng& combine_comp_rng,
+            const Combine& combine) {
   auto lift = [&] (reference_of<Iter> x) {
     return x;
   };
@@ -1169,7 +1169,7 @@ parray<Item> scan(Iter lo,
                   Iter hi,
                   Item id,
                   const Combine& combine,
-		  scan_type st) {
+                  scan_type st) {
   auto combine_comp_rng = [&] (const value_type_of<Iter>* lo, const value_type_of<Iter>* hi) {
     return hi - lo;
   };
