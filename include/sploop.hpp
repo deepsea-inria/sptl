@@ -18,10 +18,10 @@ void parallel_for(Iter lo,
                   const Body& body,
                   const Seq_body_rng& seq_body_rng) {
 #if defined(SPTL_MANUAL_CONTROL) && defined(SPTL_USE_CILK_PLUS_RUNTIME)
-    cilk_for (Iter i = lo; i < hi; i++) {
-      body(i);
-    }
-    return;
+  cilk_for (Iter i = lo; i < hi; i++) {
+    body(i);
+  }
+  return;
 #endif
   auto comp = comp_rng(lo, hi);
   spguard([&] { return comp; }, [&] {

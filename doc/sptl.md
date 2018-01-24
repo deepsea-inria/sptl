@@ -3218,7 +3218,7 @@ to our reduction.
 int max0(const parray<parray<int>>& xss) {
   parray<int> id = { std::numeric_limits<int>::lowest() };
   // compute partial sums of the sizes of the subarrays
-  parray<size_t> pfxsums =
+  parray<size_t> ps =
     sums(xss.size(), [&] (size_t i) {
       // make minimum cost be 1 so that the cost of treating the
       // length-zero array is accounted for
@@ -3227,7 +3227,7 @@ int max0(const parray<parray<int>>& xss) {
   // compute the total sum of sizes of the subarrays
   auto combine_comp_rng = [&] (const parray<int>* lo, const parray<int>* hi) {
     // total weight of subarrays in the range [lo, hi)
-    return pfxsums[lo - xss.cbegin()] + pfxsums[hi - xss.cbegin()];
+    return ps[lo - xss.cbegin()] + ps[hi - xss.cbegin()];
   };
   auto combine = [&] (const parray<int>& xs1,
                       const parray<int>& xs2) {
@@ -3721,12 +3721,12 @@ int max1(const parray<parray<int>>& xss) {
   auto combine = [&] (int x, int y) {
     return std::max(x, y);
   };
-  parray<size_t> pfxsums =
+  parray<size_t> ps =
     sums(xss.size(), [&] (size_t i) {
       return std::max((size_t)1, xss[i].size());
     });
   auto lift_comp_rng = [&] (const parray<int>* lo, const parray<int>* hi) {
-    return pfxsums[lo - xss.cbegin()] + pfxsums[hi - xss.cbegin()];
+    return ps[lo - xss.cbegin()] + ps[hi - xss.cbegin()];
   };
   auto lift = [&] (const parray<int>& xs) {
     return max(xs);
@@ -4110,12 +4110,12 @@ int max2(const parray<parray<int>>& xss) {
   auto combine = [&] (int x, int y) {
     return std::max(x, y);
   };
-  parray<size_t> pfxsums =
+  parray<size_t> ps =
     sums(xss.size(), [&] (size_t i) {
       return std::max((size_t)1, xss[i].size());
     });
   auto lift_comp_rng = [&] (const parray<int>* lo, const parray<int>* hi) {
-    return pfxsums[lo - xss.cbegin()] + pfxsums[hi - xss.cbegin()];
+    return ps[lo - xss.cbegin()] + ps[hi - xss.cbegin()];
   };
   auto lift_idx = [&] (int, const parray<int>& xs) {
     return max(xs);
@@ -4320,12 +4320,12 @@ int max3(const parray<parray<int>>& xss) {
   };
   using output_type = level3::cell_output<int, decltype(combine)>;
   output_type out(id, combine);
-  parray<size_t> pfxsums =
+  parray<size_t> ps =
     sums(xss.size(), [&] (size_t i) {
       return std::max((size_t)1, xss[i].size());
     });
   auto lift_comp_rng = [&] (const parray<int>* lo, const parray<int>* hi) {
-    return pfxsums[lo - xss.cbegin()] + pfxsums[hi - xss.cbegin()];
+    return ps[lo - xss.cbegin()] + ps[hi - xss.cbegin()];
   };
   auto lift_idx_dst = [&] (int, const parray<int>& xs, int& result) {
     result = max(xs);
