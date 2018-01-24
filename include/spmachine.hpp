@@ -116,7 +116,7 @@ void initialize_cpuinfo() {
   cpu_frequency_mhz = (float)freq / 1000000.;
 #endif
   if (cpu_frequency_mhz == 0.) {
-    //    atomic::die("Failed to read CPU frequency\n");
+    die("Failed to read CPU frequency\n");
   }
   cpu_frequency_ghz = (double) (cpu_frequency_mhz / 1000.0);
 }

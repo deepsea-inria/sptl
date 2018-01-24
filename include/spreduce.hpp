@@ -152,7 +152,7 @@ void scan_seq(In_iter in_lo,
       out.copy(x, *out_it);
     }
   } else {
-    //util::atomic::die("Bogus scan type passed to scan");
+    die("Bogus scan type passed to scan");
   }
 }
   
