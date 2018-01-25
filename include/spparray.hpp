@@ -85,16 +85,7 @@ public:
   : sz(0) {
     tabulate(sz, body);
   }
-  
-  template <class Body_cmp, class Body>
-  parray(size_t sz,
-         const Body_cmp& body_comp,
-         const Body& body,
-         bool range)
-  : sz(0) {
-    balanced_tabulate(sz, body_comp, body);
-  }
-  
+    
   parray(std::initializer_list<value_type> xs) {
     alloc(xs.size());
     if (sz == 0) {
@@ -196,44 +187,24 @@ public:
   }
   
   template <class Body>
-  void prefix_tabulate(size_t n, size_t prefix_sz, const Body& body) {
+  void tabulate(size_t n, const Body& body) {
     realloc(n);
-    if (n == 0) return;
+    if (n == 0) {
+      return;
+    }
     auto ptr = this->ptr.get();
-    parallel_for((size_t)0, prefix_sz, [&] (size_t l, size_t r) { return r - l; }, [&, ptr] (size_t i) {
+    auto body_comp = [&] (size_t lo, size_t hi) {
+      return hi - lo;
+    };
+    parallel_for((size_t)0, n, body_comp, [&, ptr] (size_t i) {
       ptr[i] = body(i);
-    }, [&, ptr] (size_t l, size_t r) {
-      for (size_t i = l; i < r; i++) {
+    }, [&, ptr] (size_t lo, size_t hi) {
+      for (size_t i = lo; i < hi; i++) {
         ptr[i] = body(i);
       }
     });
   }
-
-  void prefix_tabulate(size_t n, size_t prefix_sz) {
-    value_type value;
-     realloc(n);
-     if (n == 0) return;
-     sptl::fill(begin(), begin() + std::min(n, prefix_sz), value);
-  }
-
-  template <class Body>
-  void tabulate(size_t n, const Body& body) {
-    prefix_tabulate(n, n, body);
-  }
     
-  template <class Body, class Body_comp_rng>
-  void balanced_tabulate(long n, long prefix_sz, const Body_comp_rng& body_comp_rng, const Body& body) {
-    realloc(n);
-    parallel_for(0l, prefix_sz, body_comp_rng, [&] (size_t i) {
-      ptr[i] = body(i);
-    });
-  }
-
-  template <class Body, class Body_cmp_rng>
-  void balanced_tabulate(size_t n, const Body_cmp_rng& body_cmp_rng, const Body& body) {
-    balanced_tabulate(n, n, body_cmp_rng, body);
-  }
-
   iterator begin() const {
     return &ptr[0];
   }
