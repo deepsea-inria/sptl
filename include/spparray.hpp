@@ -98,14 +98,19 @@ public:
   }
   
   parray(const parray& other) {
-    alloc(other.size());if (sz == 0) return;
+    alloc(other.size());
+    if (sz == 0) {
+      return;
+    }
     copy(other.cbegin(), other.cend(), begin());
   }
   
   parray(iterator lo, iterator hi) {
     size_t n = hi - lo;
     alloc(n);
-    if (n == 0) return;
+    if (n == 0) {
+      return;
+    }
     copy(lo, hi, begin());
   }
   
@@ -127,7 +132,7 @@ public:
   parray& operator=(parray&& other) {
     ptr = std::move(other.ptr);
     sz = std::move(other.sz);
-    other.sz = 0l; // redundant?
+    other.sz = 0;
     return *this;
   }
   
@@ -158,7 +163,9 @@ public:
     parray<Item> tmp;
     tmp.prefix_tabulate(n, 0);
     swap(tmp);
-    if (n == 0) return;
+    if (n == 0) {
+      return;
+    }
     copy(tmp.begin(), tmp.begin() + std::min(n, sz), begin());
     if (init_sz != n) {
       sptl::fill(begin() + std::min(n, sz), begin() + init_sz, val);
@@ -171,7 +178,9 @@ public:
     }
     parray<Item> tmp(n, val);
     swap(tmp);
-    if (n == 0) return;
+    if (n == 0) {
+      return;
+    }
     size_t m = std::min(tmp.size(), size());
     assert(size() >= m);
     copy(tmp.cbegin(), tmp.cbegin()+m, begin());
