@@ -904,6 +904,23 @@ Result reducei(Iter lo,
   };
   return level2::reduce(lo, hi, id, combine, lift_comp_rng, lift_idx, seq_reduce_rng);
 }
+
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Lift_idx
+>
+Result reducei(Iter lo,
+               Iter hi,
+               Result id,
+               const Combine& combine,
+               const Lift_idx& lift_idx) {
+  auto lift_comp_rng = [&] (Iter lo, Iter hi) {
+    return hi - lo;
+  };
+  return reducei(lo, hi, id, combine, lift_comp_rng, lift_idx);
+}
   
 template <
   class Iter,
@@ -969,6 +986,27 @@ parray<Result> scani(Iter lo,
   return level2::scan(lo, hi, id, combine_comp_rng, combine, lift_comp_rng, lift_idx, seq_scan_rng_dst, st);
 }
 
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Lift_idx
+>
+parray<Result> scani(Iter lo,
+                     Iter hi,
+                     Result id,
+                     const Combine& combine,
+                     const Lift_idx& lift_idx,
+                     scan_type st) {
+  auto combine_comp_rng = [&] (const Result* lo, const Result* hi) {
+    return hi - lo;
+  };
+  auto lift_comp_rng = [&] (Iter lo, Iter hi) {
+    return hi - lo;
+  };
+  return scani(lo, hi, id, combine_comp_rng, combine, lift_comp_rng, lift_idx, st);
+}
+  
 template <
   class Iter,
   class Result,
