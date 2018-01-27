@@ -229,6 +229,11 @@ public:
   const_iterator cend() const {
     return &ptr[size()];
   }
+
+  void reset(size_t n, pointer* p) {
+    sz = n;
+    ptr.reset(p);
+  }
   
 };
   
