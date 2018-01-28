@@ -821,7 +821,7 @@ namespace dps {
       dst = lift_idx(pos, x);
     };
     auto output_comp_rng = combine_comp_rng;
-    level3::scan(lo, hi, out, id, outs_lo, output_comp_rng, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
+    level3::scan(lo, hi, output_comp_rng, out, id, outs_lo, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
   }
 
   template <
