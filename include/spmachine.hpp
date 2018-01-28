@@ -155,7 +155,6 @@ void launch(int argc, char** argv, const Body& body) {
   numa_alloc_interleaved =
     deepsea::cmdline::parse_or_default_bool("numa_alloc_interleaved", numa_alloc_interleaved, false);
   initialize_hwloc(nb_proc, numa_alloc_interleaved);
-  auto start = std::chrono::system_clock::now();
 #if defined(USE_CILK_RUNTIME)
   // hack that seems to be required to initialize cilk runtime cleanly
   cilk_spawn seq_fib(2);
@@ -164,9 +163,6 @@ void launch(int argc, char** argv, const Body& body) {
 #else
   body();
 #endif
-  auto end = std::chrono::system_clock::now();
-  std::chrono::duration<float> diff = end - start;
-  printf ("exectime %.3lf\n", diff.count());
   callback::output();
   callback::destroy();
 }

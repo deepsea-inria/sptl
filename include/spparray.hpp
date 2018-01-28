@@ -102,7 +102,7 @@ public:
     if (sz == 0) {
       return;
     }
-    copy(other.cbegin(), other.cend(), begin());
+    sptl::copy(other.cbegin(), other.cend(), begin());
   }
   
   parray(iterator lo, iterator hi) {
@@ -111,7 +111,7 @@ public:
     if (n == 0) {
       return;
     }
-    copy(lo, hi, begin());
+    sptl::copy(lo, hi, begin());
   }
   
   ~parray() {
@@ -124,7 +124,7 @@ public:
     }
     realloc(other.size());
     if (sz != 0) {
-      copy(other.cbegin(), other.cend(), begin());
+      sptl::copy(other.cbegin(), other.cend(), begin());
     }
     return *this;
   }
@@ -166,7 +166,7 @@ public:
     if (n == 0) {
       return;
     }
-    copy(tmp.begin(), tmp.begin() + std::min(n, sz), begin());
+    sptl::copy(tmp.begin(), tmp.begin() + std::min(n, sz), begin());
     if (init_sz != n) {
       sptl::fill(begin() + std::min(n, sz), begin() + init_sz, val);
     }
@@ -183,7 +183,7 @@ public:
     }
     size_t m = std::min(tmp.size(), size());
     assert(size() >= m);
-    copy(tmp.cbegin(), tmp.cbegin()+m, begin());
+    sptl::copy(tmp.cbegin(), tmp.cbegin()+m, begin());
   }
   
   void resize(size_t n) {
@@ -230,9 +230,14 @@ public:
     return &ptr[size()];
   }
 
-  void reset(size_t n, pointer* p) {
+  void reset(size_t n, pointer p) {
     sz = n;
     ptr.reset(p);
+  }
+
+  void reset(size_t n) {
+    pointer p = (pointer)malloc(n * sizeof(value_type));
+    reset(n, p);
   }
   
 };

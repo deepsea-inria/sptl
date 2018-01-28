@@ -171,7 +171,7 @@ parray<value_type_of<Item_iter>> pack(Item_iter lo, Item_iter hi, Flags_iter fla
   parray<value_type_of<Item_iter>> result;
   value_type_of<Item_iter> tmp;
   __priv::pack(flags_lo, lo, hi, tmp, [&] (size_t m) {
-    result.prefix_tabulate(m, 0);
+    result.reset(m);
     return result.begin();
   }, [&] (size_t, reference_of<Item_iter> x) {
     return x;
@@ -188,7 +188,7 @@ parray<value_type_of<Item_iter>> pack_seq(Item_iter lo, Item_iter hi, Flags_iter
       total++;
     }
   }
-  result.prefix_tabulate(total, 0);
+  result.reset(total);
   total = 0;
   for (size_t it = 0; it < hi - lo; it++) {
     if (flags_lo[it]) {
@@ -203,7 +203,7 @@ parray<size_t> pack_index(Flags_iter lo, Flags_iter hi) {
   parray<size_t> result;
   size_t dummy;
   __priv::pack(lo, lo, hi, dummy, [&] (size_t m) {
-    result.prefix_tabulate(m, 0);
+    result.reset(m);
     return result.begin();
   }, [&] (size_t offset, reference_of<Flags_iter>) {
     return offset;
@@ -220,7 +220,7 @@ parray<value_type_of<Iter>> filteri(Iter lo, Iter hi, const Pred_idx& pred_idx) 
   value_type_of<Iter> dummy;
   parray<value_type_of<Iter>> dst;
   __priv::pack(flags.cbegin(), lo, hi, dummy, [&] (size_t m) {
-    dst.prefix_tabulate(m, 0);
+    dst.reset(m);
     return dst.begin();
   }, [&] (size_t, reference_of<Iter> x) {
     return x;
