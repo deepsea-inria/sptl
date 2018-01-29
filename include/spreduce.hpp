@@ -220,11 +220,7 @@ void scan_rec(const parray<Result>& ins,
       scan_seq(ins, outs_lo, out, id, st);
     } else {
       parray<Result> partials;
-      if (std::is_fundamental<Result>::value) {
-        partials.reset(m);
-      } else {
-        partials.resize(m);
-      }
+      partials.reset(m);
       auto b1 = [&] (size_t i) {
         auto beg = ins.cbegin();
         size_t lo = get_rng(k, n, i).first;
@@ -233,11 +229,7 @@ void scan_rec(const parray<Result>& ins,
       };
       parallel_for((size_t)0, m, loop_comp, b1);
       parray<Result> scans;
-      if (std::is_fundamental<Result>::value) {
-        scans.reset(m);
-      } else {
-        scans.resize(m);
-      }
+      scans.reset(m);
       auto st2 = (is_backward_scan(st)) ? backward_exclusive_scan : forward_exclusive_scan;
       scan_rec(partials, scans.begin(), out, id, merge_comp_rng, st2);
       auto b2 = [&] (size_t i) {
@@ -288,11 +280,7 @@ void scan(Input& in,
     } else {
       parray<Input> splits = in.split(m);
       parray<Result> partials;
-      if (std::is_fundamental<Result>::value) {
-        partials.reset(m);
-      } else {
-        partials.resize(m);
-      }
+      partials.reset(m);
       auto b1 = [&] (size_t i) {
         size_t lo = get_rng(k, n, i).first;
         size_t hi = get_rng(k, n, i).second;
@@ -301,11 +289,7 @@ void scan(Input& in,
       };
       parallel_for((size_t)0, m, loop_comp, b1);
       parray<Result> scans;
-      if (std::is_fundamental<Result>::value) {
-        scans.reset(m);
-      } else {
-        scans.resize(m);
-      }
+      scans.reset(m);
       auto st2 = (is_backward_scan(st)) ? backward_exclusive_scan : forward_exclusive_scan;
       scan_rec(partials, scans.begin(), out, id, merge_comp_rng, st2);
       auto b2 = [&] (size_t i) {
@@ -757,11 +741,7 @@ parray<Result> scan(Iter lo,
   auto output_comp_rng = combine_comp_rng;
   output_type out(id, combine);
   parray<Result> results;
-  if (std::is_fundamental<Result>::value) {
-    results.reset(hi - lo);
-  } else {
-    results.resize(hi - lo);
-  }
+  results.reset(hi - lo);
   auto outs_lo = results.begin();
   auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
     dst = lift_idx(pos, x);

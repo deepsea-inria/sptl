@@ -155,23 +155,6 @@ public:
     std::swap(sz, other.sz);
   }
   
-  void resize(size_t n, size_t init_sz, const value_type& val) {
-    if (n == sz) {
-      return;
-    }
-    init_sz = std::min(n, init_sz);
-    parray<Item> tmp;
-    tmp.prefix_tabulate(n, 0);
-    swap(tmp);
-    if (n == 0) {
-      return;
-    }
-    sptl::copy(tmp.begin(), tmp.begin() + std::min(n, sz), begin());
-    if (init_sz != n) {
-      sptl::fill(begin() + std::min(n, sz), begin() + init_sz, val);
-    }
-  }
-
   void resize(size_t n, const value_type& val) {
     if (n == sz) {
       return;
@@ -231,8 +214,13 @@ public:
   }
 
   void reset(size_t n, pointer p) {
-    sz = n;
-    ptr.reset(p);
+    if (std::is_fundamental<value_type>::value) {
+      sz = n;
+      ptr.reset(p);
+    } else {
+      free(p);
+      resize(n);
+    }
   }
 
   void reset(size_t n) {
