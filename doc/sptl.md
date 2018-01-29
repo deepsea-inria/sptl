@@ -1,6 +1,4 @@
 % The Series-Parallel Template Library User's Guide
-% Deepsea Project
-% Version 1.0
 
 Introduction
 ============
