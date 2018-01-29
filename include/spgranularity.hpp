@@ -131,7 +131,7 @@ namespace sptl {
       estimator& estim = contr.get_estimator();
       execmode_type c = p;
       if (estim.is_undefined() && (p != Sequential)) {
-	c = Unknown;
+        c = Unknown;
       }
       complexity_type m = complexity_measure_fct();
       if (c == Parallel) {
@@ -140,10 +140,10 @@ namespace sptl {
         c = (pred <= kappa) ? Sequential : Parallel;
       }
       if (c == Sequential) {
-	auto start = cycle_counter::now();
-	run(Sequential, seq_body_fct);
-	auto elapsed = cycle_counter::since(start);
-	estim.report(std::max((complexity_type)1, m), elapsed);
+        auto start = cycle_counter::now();
+        run(Sequential, seq_body_fct);
+        auto elapsed = cycle_counter::since(start);
+        estim.report(std::max((complexity_type)1, m), elapsed);
       } else if (c == Parallel) {
         run(Parallel, par_body_fct);
       } else if (c == Unknown) {
