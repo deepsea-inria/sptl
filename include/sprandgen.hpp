@@ -38,7 +38,7 @@ template <class T> T hash(int i) {
   } else if (typeid(T) == typeid(double)) {
     return hashd(i);
   } else {
-    //pasl::util::atomic::die("bogus");
+    die("bogus");
     return 0;
   }
 }
