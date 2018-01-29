@@ -152,7 +152,7 @@ void scan_seq(In_iter in_lo,
       out.copy(x, *out_it);
     }
   } else {
-    //util::atomic::die("Bogus scan type passed to scan");
+    die("Bogus scan type passed to scan");
   }
 }
   
@@ -221,9 +221,9 @@ void scan_rec(const parray<Result>& ins,
     } else {
       parray<Result> partials;
       if (std::is_fundamental<Result>::value) {
-        partials.prefix_tabulate(m, 0);
+        partials.reset(m);
       } else {
-        partials.prefix_tabulate(m, m);
+        partials.resize(m);
       }
       auto b1 = [&] (size_t i) {
         auto beg = ins.cbegin();
@@ -234,9 +234,9 @@ void scan_rec(const parray<Result>& ins,
       parallel_for((size_t)0, m, loop_comp, b1);
       parray<Result> scans;
       if (std::is_fundamental<Result>::value) {
-        scans.prefix_tabulate(m, 0);
+        scans.reset(m);
       } else {
-        scans.prefix_tabulate(m, m);
+        scans.resize(m);
       }
       auto st2 = (is_backward_scan(st)) ? backward_exclusive_scan : forward_exclusive_scan;
       scan_rec(partials, scans.begin(), out, id, merge_comp_rng, st2);
@@ -289,9 +289,9 @@ void scan(Input& in,
       parray<Input> splits = in.split(m);
       parray<Result> partials;
       if (std::is_fundamental<Result>::value) {
-        partials.prefix_tabulate(m, 0);
+        partials.reset(m);
       } else {
-        partials.prefix_tabulate(m, m);
+        partials.resize(m);
       }
       auto b1 = [&] (size_t i) {
         size_t lo = get_rng(k, n, i).first;
@@ -302,9 +302,9 @@ void scan(Input& in,
       parallel_for((size_t)0, m, loop_comp, b1);
       parray<Result> scans;
       if (std::is_fundamental<Result>::value) {
-        scans.prefix_tabulate(m, 0);
+        scans.reset(m);
       } else {
-        scans.prefix_tabulate(m, m);
+        scans.resize(m);
       }
       auto st2 = (is_backward_scan(st)) ? backward_exclusive_scan : forward_exclusive_scan;
       scan_rec(partials, scans.begin(), out, id, merge_comp_rng, st2);
@@ -335,7 +335,7 @@ template <
   class Seq_convert_scan
 >
 void scan(Input& in,
-	  const Merge_comp_rng& merge_comp_rng,
+          const Merge_comp_rng& merge_comp_rng,
           const Output& out,
           Result& id,
           Output_iter outs_lo,
@@ -532,7 +532,7 @@ template <
 >
 void scan(Input_iter lo,
           Input_iter hi,
-	  const Output_comp_rng& output_comp_rng,
+          const Output_comp_rng& output_comp_rng,
           const Output& out,
           Result& id,
           Output_iter outs_lo,
@@ -715,6 +715,25 @@ Result reduce(Iter lo,
   level3::reduce(lo, hi, out, id, result, lift_comp_rng, lift_idx_dst, seq_reduce_rng_dst);
   return result;
 }
+
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Lift_idx,
+  class Seq_reduce_rng
+>
+Result reduce(Iter lo,
+              Iter hi,
+              Result id,
+              const Combine& combine,
+              const Lift_idx& lift_idx,
+              const Seq_reduce_rng& seq_reduce_rng) {
+  auto lift_comp_rng = [&] (Iter lo, Iter hi) {
+    return hi - lo;
+  };
+  return reduce(lo, hi, id, combine, lift_comp_rng, lift_idx, seq_reduce_rng);
+}
   
 template <
   class Iter,
@@ -728,7 +747,7 @@ template <
 parray<Result> scan(Iter lo,
                     Iter hi,
                     Result id,
-		    const Combine_comp_rng& combine_comp_rng,
+                    const Combine_comp_rng& combine_comp_rng,
                     const Combine& combine,
                     const Lift_comp_rng& lift_comp_rng,
                     const Lift_idx& lift_idx,
@@ -739,9 +758,9 @@ parray<Result> scan(Iter lo,
   output_type out(id, combine);
   parray<Result> results;
   if (std::is_fundamental<Result>::value) {
-    results.prefix_tabulate(hi - lo, 0);
+    results.reset(hi - lo);
   } else {
-    results.prefix_tabulate(hi - lo, 0);
+    results.resize(hi - lo);
   }
   auto outs_lo = results.begin();
   auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
@@ -802,7 +821,7 @@ namespace dps {
       dst = lift_idx(pos, x);
     };
     auto output_comp_rng = combine_comp_rng;
-    level3::scan(lo, hi, out, id, outs_lo, output_comp_rng, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
+    level3::scan(lo, hi, output_comp_rng, out, id, outs_lo, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
   }
 
   template <
@@ -904,6 +923,23 @@ Result reducei(Iter lo,
   };
   return level2::reduce(lo, hi, id, combine, lift_comp_rng, lift_idx, seq_reduce_rng);
 }
+
+template <
+  class Iter,
+  class Result,
+  class Combine,
+  class Lift_idx
+>
+Result reducei(Iter lo,
+               Iter hi,
+               Result id,
+               const Combine& combine,
+               const Lift_idx& lift_idx) {
+  auto lift_comp_rng = [&] (Iter lo, Iter hi) {
+    return hi - lo;
+  };
+  return reducei(lo, hi, id, combine, lift_comp_rng, lift_idx);
+}
   
 template <
   class Iter,
@@ -952,7 +988,7 @@ template <
 parray<Result> scani(Iter lo,
                      Iter hi,
                      Result id,
-		     const Combine_comp_rng& combine_comp_rng,
+                     const Combine_comp_rng& combine_comp_rng,
                      const Combine& combine,
                      const Lift_comp_rng& lift_comp_rng,
                      const Lift_idx& lift_idx,
@@ -972,6 +1008,27 @@ parray<Result> scani(Iter lo,
 template <
   class Iter,
   class Result,
+  class Combine,
+  class Lift_idx
+>
+parray<Result> scani(Iter lo,
+                     Iter hi,
+                     Result id,
+                     const Combine& combine,
+                     const Lift_idx& lift_idx,
+                     scan_type st) {
+  auto combine_comp_rng = [&] (const Result* lo, const Result* hi) {
+    return hi - lo;
+  };
+  auto lift_comp_rng = [&] (Iter lo, Iter hi) {
+    return hi - lo;
+  };
+  return scani(lo, hi, id, combine_comp_rng, combine, lift_comp_rng, lift_idx, st);
+}
+  
+template <
+  class Iter,
+  class Result,
   class Combine_comp_rng,
   class Combine,
   class Lift_comp_rng,
@@ -980,7 +1037,7 @@ template <
 parray<Result> scan(Iter lo,
                     Iter hi,
                     Result id,
-		    const Combine_comp_rng& combine_comp_rng,
+                    const Combine_comp_rng& combine_comp_rng,
                     const Combine& combine,
                     const Lift_comp_rng& lift_comp_rng,
                     const Lift& lift,
@@ -1122,10 +1179,10 @@ template <
   class Combine
   >
 Item reduce(Iter lo,
-	    Iter hi,
-	    Item id,
-	    const Combine_comp_rng& combine_comp_rng,
-	    const Combine& combine) {
+            Iter hi,
+            Item id,
+            const Combine_comp_rng& combine_comp_rng,
+            const Combine& combine) {
   auto lift = [&] (reference_of<Iter> x) {
     return x;
   };
@@ -1154,7 +1211,7 @@ parray<Item> scan(Iter lo,
                   const Combine& combine,
                   scan_type st) {
   auto lift_comp_rng = combine_comp_rng;
-  auto lift = [&] (reference_of<Iter> x) {
+  auto lift = [&] (Item& x) {
     return x;
   };
   return level1::scan(lo, hi, id, combine_comp_rng, combine, lift_comp_rng, lift, st);
@@ -1169,8 +1226,8 @@ parray<Item> scan(Iter lo,
                   Iter hi,
                   Item id,
                   const Combine& combine,
-		  scan_type st) {
-  auto combine_comp_rng = [&] (const value_type_of<Iter>* lo, const value_type_of<Iter>* hi) {
+                  scan_type st) {
+  auto combine_comp_rng = [&] (const Item* lo, const Item* hi) {
     return hi - lo;
   };
   return scan(lo, hi, id, combine_comp_rng, combine, st);
@@ -1192,10 +1249,10 @@ namespace dps {
             Iter outs_lo,
             scan_type st) {
     auto lift_comp_rng = combine_comp_rng;
-    auto lift = [&] (reference_of<Iter> x) {
+    auto lift = [&] (Item& x) {
       return x;
     };
-    return level1::dps::scan(lo, hi, id, combine_comp_rng, combine, outs_lo, lift, st);
+    return level1::dps::scan(lo, hi, id, combine_comp_rng, combine, outs_lo, lift_comp_rng, lift, st);
   }
 
   template <
@@ -1209,7 +1266,7 @@ namespace dps {
             const Combine& combine,
             Iter outs_lo,
             scan_type st) {
-    auto combine_comp_rng = [&] (const value_type_of<Iter>* lo, const value_type_of<Iter>* hi) {
+    auto combine_comp_rng = [&] (const Item* lo, const Item* hi) {
       return hi - lo;
     };
     return scan(lo, hi, id, combine_comp_rng, combine, outs_lo, st);

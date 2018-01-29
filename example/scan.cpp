@@ -12,6 +12,12 @@ namespace sptl {
 		       return x + y;
 		     }, forward_exclusive_scan);
     std::cout << "ys\t" << ys << std::endl;
+    
+    dps::scan(xs.begin(), xs.end(), 0, [&] (int x, int y) {
+		       return x + y;
+           }, ys.begin(), forward_exclusive_scan); 
+    
+    std::cout << "ys\t" << ys << std::endl;
   }
   
 } // end namespace

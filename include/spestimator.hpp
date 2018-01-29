@@ -81,7 +81,6 @@ std::string get_path_to_constants_file_from_cmdline(std::string flag) {
 static
 bool loaded = false;
 
-static
 void try_read_constants_from_file() {
   if (loaded) {
     return;
@@ -111,7 +110,6 @@ void try_read_constants_from_file() {
   }
 }
 
-static
 void try_write_constants_to_file() {
   std::string outfile_path = get_path_to_constants_file_from_cmdline("write_csts");
   if (outfile_path == "")
@@ -130,10 +128,6 @@ void try_write_constants_to_file() {
 /*---------------------------------------------------------------------*/
 /* The estimator data structure */
   
-cost_type kappa = 100;
-
-double update_size_ratio = 1.5; // aka alpha
-
 template <class Item>
 using perworker_type = perworker::array<Item>;
 
@@ -275,7 +269,7 @@ public:
   }
 
   void report(complexity_type complexity, cost_type elapsed) {
-    double local_ticks_per_microsecond = machine::cpu_frequency_ghz * 1000.0;
+    double local_ticks_per_microsecond = cpu_frequency_ghz * 1000.0;
     double elapsed_time = elapsed / local_ticks_per_microsecond;
     cost_type measured_cst = elapsed_time / complexity;    
     if (elapsed_time > kappa) {

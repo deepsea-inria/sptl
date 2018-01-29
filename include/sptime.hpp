@@ -55,7 +55,7 @@ namespace wall_clock {
   }
 
   double since(cycles_type start) {
-    return (now() - start) * machine::cpu_frequency_ghz;
+    return (now() - start) * cpu_frequency_ghz;
   }
 
   
