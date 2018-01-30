@@ -128,33 +128,14 @@ void try_write_constants_to_file() {
 /*---------------------------------------------------------------------*/
 /* The estimator data structure */
   
-template <class Item>
-using perworker_type = perworker::array<Item>;
-
 class estimator : public callback::client {
 //private:
 public:
 
-  constexpr static
-  const double min_report_shared_factor = 2.0;
-  
-  constexpr static
-  const double weighted_average_factor = 8.0;
-
   cost_type shared;
 
-  perworker_type<cost_type> privates;
-
   std::string name;    
-
-  // 5 cold runs
-  constexpr static const
-  int number_of_cold_runs = 5;
   
-  perworker_type<double> first_estimation;
-  
-  perworker_type<int> estimations_left;
-
   constexpr static const
   long long cst_mask = (1LL << 32) - 1;
   
@@ -222,9 +203,6 @@ public:
   
   void init() {
     shared = cost::undefined;
-    privates.init(cost::undefined);
-    estimations_left.init(5);
-    first_estimation.init(std::numeric_limits<double>::max());
     try_read_constants_from_file();
     constant_map_type::iterator preloaded = preloaded_constants.find(get_name());
     if (preloaded != preloaded_constants.end()) {
