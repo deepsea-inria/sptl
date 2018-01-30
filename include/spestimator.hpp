@@ -151,8 +151,6 @@ public:
   constexpr static const
   int number_of_cold_runs = 5;
   
-  bool estimated;
-  
   perworker_type<double> first_estimation;
   
   perworker_type<int> estimations_left;
@@ -207,10 +205,8 @@ public:
     info_loader new_info;
     new_info.f.cst = (float) new_cst_d;
     new_info.f.size = (float) new_size_d;
-
     info_loader info;
     info.l = shared_info.load();
-
     while (true) {
       if (info.f.size < new_info.f.size) {
         if (compare_exchange(shared_info, info.l, new_info.l)) {
@@ -227,15 +223,11 @@ public:
   void init() {
     shared = cost::undefined;
     privates.init(cost::undefined);
-    estimated = false;
     estimations_left.init(5);
     first_estimation.init(std::numeric_limits<double>::max());
-    
     try_read_constants_from_file();
-    
     constant_map_type::iterator preloaded = preloaded_constants.find(get_name());
     if (preloaded != preloaded_constants.end()) {
-      estimator::estimated = true;
       shared = preloaded->second;
     }
   }
@@ -289,6 +281,7 @@ public:
     if (complexity <= info.f.size) {
       return kappa - 1;
     }
+    // somehow, control never gets here
     return info.f.cst * ((double) complexity) / update_size_ratio; // allow kappa * alpha runs
   }
   
