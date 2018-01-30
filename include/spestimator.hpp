@@ -269,9 +269,10 @@ public:
   }
 
   void report(complexity_type complexity, cost_type elapsed) {
+    complexity = std::max((complexity_type)1, complexity);
     double local_ticks_per_microsecond = cpu_frequency_ghz * 1000.0;
     double elapsed_time = elapsed / local_ticks_per_microsecond;
-    cost_type measured_cst = elapsed_time / complexity;    
+    cost_type measured_cst = elapsed_time / complexity;
     if (elapsed_time > kappa) {
       return;
     }
@@ -279,6 +280,7 @@ public:
   }
   
   cost_type predict(complexity_type complexity) {
+    complexity = std::max((complexity_type)1, complexity);
     info_loader info;
     info.l = shared_info.load();
     if (complexity > update_size_ratio * info.f.size) { // was 2

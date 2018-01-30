@@ -79,8 +79,7 @@ namespace sptl {
       Force_sequential = 0,
       Force_parallel = 1,
       Sequential = 2,
-      Parallel = 3,
-      Unknown = 4
+      Parallel = 3
     };
     
     template <class Item>
@@ -88,7 +87,7 @@ namespace sptl {
 
     perworker_type<dynidentifier<execmode_type>> execmode(Parallel);
 
-    perworker_type<long long> timer(0);
+    perworker_type<cycles_type> prev(0);
     
     perworker_type<cost_type> work(0);
 
@@ -111,14 +110,6 @@ namespace sptl {
                  const Complexity_measure_fct& complexity_measure_fct,
                  const Par_body_fct& par_body_fct,
                  const Seq_body_fct& seq_body_fct) {
-#ifdef SPTL_SEQUENTIAL_BASELINE
-      seq_body_fct();
-      return;
-#endif
-#if defined(SPTL_SEQUENTIAL_ELISION)
-      par_body_fct();
-      return;
-#endif
       execmode_type p = my_execmode();
       if ((p == Sequential) || (p == Force_sequential)) {
         run(Sequential, seq_body_fct);
@@ -130,33 +121,29 @@ namespace sptl {
       }
       estimator& estim = contr.get_estimator();
       execmode_type c = p;
-      if (estim.is_undefined() && (p != Sequential)) {
-        c = Unknown;
-      }
-      complexity_type m = complexity_measure_fct();
-      if (c == Parallel) {
-        complexity_type comp = std::max((complexity_type)1, m);
-        cost_type pred = estim.predict(comp);
-        c = (pred <= kappa) ? Sequential : Parallel;
+      complexity_type m = (complexity_type)complexity_measure_fct();
+      if ((c == Parallel) && (! estim.is_undefined())) {
+        c = (estim.predict(m) <= kappa) ? Sequential : Parallel;
       }
       if (c == Sequential) {
         auto start = cycle_counter::now();
         run(Sequential, seq_body_fct);
         auto elapsed = cycle_counter::since(start);
-        estim.report(std::max((complexity_type)1, m), elapsed);
+        estim.report(m, elapsed);
       } else if (c == Parallel) {
-        run(Parallel, par_body_fct);
-      } else if (c == Unknown) {
-        cost_type upper_work = work.mine() + wall_clock::since(timer.mine());
+        auto t = cycle_counter::since(prev.mine());
+        cost_type upper_work = work.mine() + t;
         work.mine() = 0;
-        timer.mine() = wall_clock::now();
-        run(Unknown, par_body_fct);
-        work.mine() += wall_clock::since(timer.mine());
-        estim.report(std::max((complexity_type) 1, m), work.mine());
+        prev.mine() = cycle_counter::now();
+        run(Parallel, par_body_fct);
+        work.mine() += cycle_counter::since(prev.mine());
+        if (estim.is_undefined()) {
+          estim.report(m, work.mine());
+        }
         work.mine() += upper_work;
-        timer.mine() = wall_clock::now();
+        prev.mine() = cycle_counter::now();
       } else {
-        assert(false);
+        die("bogus execution mode");
       }
     }
 
@@ -206,7 +193,7 @@ template <
   class Par_body_fct
   >
 void spguard(const Complexity_measure_fct& complexity_measure_fct,
-	     const Par_body_fct& par_body_fct) {
+             const Par_body_fct& par_body_fct) {
   using controller_type = granularity::controller_holder<granularity::dflt_estim_name, Complexity_measure_fct, Par_body_fct>;
   granularity::spguard(controller_type::controller, complexity_measure_fct, par_body_fct);
 }
@@ -267,38 +254,32 @@ void primitive_fork2(const Body_fct1& f1, const Body_fct2& f2) {
   
 template <class Body_fct1, class Body_fct2>
 void fork2(const Body_fct1& f1, const Body_fct2& f2) {
-#if defined(SPTL_SEQUENTIAL_ELISION) || defined(SPTL_SEQUENTIAL_BASELINE)
-  f1();
-  f2();
-  return;
-#endif
-#if defined(SPTL_PARALLEL_ELISION)
-  primitive_fork2(f1, f2);
-  return;
-#endif
   granularity::execmode_type c = granularity::my_execmode();
   if ((c == granularity::Sequential) || (c == granularity::Force_sequential)) {
     f1();
     f2();
-  } else if ((c == granularity::Parallel) || (c == granularity::Force_parallel)) {
+  } else if (c == granularity::Force_parallel) {
     primitive_fork2(f1, f2);
-  } else if (c == granularity::Unknown) {
-    cost_type upper_work = granularity::work.mine() + wall_clock::since(granularity::timer.mine());
+  } else if (c == granularity::Parallel) {
+    auto t = cycle_counter::since(granularity::prev.mine());
+    auto upper_work = granularity::work.mine() + t;
     granularity::work.mine() = 0;
     cost_type left_work, right_work;
     primitive_fork2([&] {
       granularity::work.mine() = 0;
-      granularity::timer.mine() = wall_clock::now();
+      granularity::prev.mine() = cycle_counter::now();
       run(c, f1);
-      left_work = granularity::work.mine() + wall_clock::since(granularity::timer.mine());
+      auto t = cycle_counter::since(granularity::prev.mine());
+      left_work = granularity::work.mine() + t;
     }, [&] {
       granularity::work.mine() = 0;
-      granularity::timer.mine() = wall_clock::now();
+      granularity::prev.mine() = cycle_counter::now();
       run(c, f2);
-      right_work = granularity::work.mine() + wall_clock::since(granularity::timer.mine());
+      auto t = cycle_counter::since(granularity::prev.mine());
+      right_work = granularity::work.mine() + t;
     });
     granularity::work.mine() = upper_work + left_work + right_work;
-    granularity::timer.mine() = wall_clock::now();
+    granularity::prev.mine() = cycle_counter::now();
   }
 }
 
