@@ -138,7 +138,7 @@ int nb_proc = 1;
   
 double kappa = 100;
 
-double update_size_ratio = 1.5; // aka alpha
+double update_size_ratio = 1.2; // aka alpha
   
 template <class Body>
 void launch(int argc, char** argv, const Body& body) {
