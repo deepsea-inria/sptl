@@ -10,19 +10,26 @@
 
 namespace sptl {
 
+/*---------------------------------------------------------------------*/
+/* Cycle counter */
+
 using cycles_type = uint64_t;
   
 namespace cycle_counter {
 
-  static inline
-  cycles_type rdtsc() {
-    unsigned int hi, lo;
-    __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
-    return  ((cycles_type) lo) | (((cycles_type) hi) << 32);
-  }
+  namespace {
+    
+    static inline
+    cycles_type rdtsc() {
+      unsigned int hi, lo;
+      __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
+      return  ((cycles_type) lo) | (((cycles_type) hi) << 32);
+    }
+
+  } // end namespace
   
   static inline
-  void rdtsc_wait(cycles_type n) {
+  void wait(cycles_type n) {
     const cycles_type start = rdtsc();
     while (rdtsc() < (start + n)) {
       __asm__("PAUSE");
@@ -34,37 +41,34 @@ namespace cycle_counter {
     return rdtsc();
   }
   
-  static inline
-  double elapsed(cycles_type time_start, cycles_type time_end) {
-    return (double)time_end - (double)time_start;
-  }
-  
-  static inline
-  double since(cycles_type time_start) {
-    return elapsed(time_start, now());
-  }
-
 } // end namespace
 
-namespace wall_clock {
+/*---------------------------------------------------------------------*/
+/* Lightweight timer */
+  
+namespace time {
 
-  cycles_type now() {
-    struct timespec t;
-    clock_gettime(CLOCK_REALTIME, &t);
-    return (cycles_type)(t.tv_sec * 1000000000LL + t.tv_nsec);
+  using time_type = double;
+
+  static inline
+  time_type now() {
+    return (time_type)cycle_counter::now();
   }
 
-  double since(cycles_type start) {
-    return (now() - start) * cpu_frequency_ghz;
+  static inline
+  time_type elapsed(time_type time_start, time_type time_end) {
+    return time_end - time_start;
   }
 
+  static inline
+  time_type since(time_type time_start) {
+    return elapsed(time_start, now());
+  }
   
 } // end namespace
 
 /*---------------------------------------------------------------------*/
-/* Atomic compare-and-exchange instruction, with backoff to deal with
- * contention
- */
+/* Atomic compare-and-exchange, with backoff */
   
 namespace {
   
@@ -73,7 +77,7 @@ int backoff_nb_cycles = 1l << 17;
 
 static inline
 void spin_for(uint64_t nb_cycles) {
-  cycle_counter::rdtsc_wait(nb_cycles);
+  cycle_counter::wait(nb_cycles);
 }
 
 template <class T>
