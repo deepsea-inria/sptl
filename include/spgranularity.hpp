@@ -71,7 +71,7 @@ namespace sptl {
     } // end namespace
     
     /*---------------------------------------------------------------------*/
-    /* Execution mode */
+    /* Series-parallel guard (internals) */
 
     namespace {
 
@@ -123,7 +123,7 @@ namespace sptl {
       execmode_type c = p;
       complexity_type m = (complexity_type)complexity_measure_fct();
       if ((c == Parallel) && (! estim.is_undefined())) {
-        c = (estim.predict(m) <= kappa) ? Sequential : Parallel;
+        c = (estim.is_small(m)) ? Sequential : Parallel;
       }
       if (c == Sequential) {
         auto start = cycle_counter::now();
@@ -171,10 +171,10 @@ namespace sptl {
     char dflt_estim_name[] = "auto";
 
   } // end namespace
-  } // end namespace
+} // end namespace
   
 /*---------------------------------------------------------------------*/
-/* Series-parallel guard */
+/* Series-parallel guard (client view) */
 
 template <
   class Complexity_measure_fct,

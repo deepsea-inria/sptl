@@ -1,5 +1,6 @@
 
 #include <assert.h>
+#include <atomic>
 #include <iostream>
 #include <stdarg.h>
 #include <stdio.h>
@@ -121,6 +122,17 @@ void initialize_cpuinfo() {
   cpu_frequency_ghz = (double) (cpu_frequency_mhz / 1000.0);
 }
 
+// pre: cpu_frequency_ghz is initialized by sptl runtime
+// later: enforce the precondition by dynamic check
+static
+double microseconds_of_cycles(double c) {
+  double ticks_per_microsecond = cpu_frequency_ghz * 1000.0;
+  return c / ticks_per_microsecond;
+}
+
+/*---------------------------------------------------------------------*/
+/* SPTL initialization */
+  
 int nb_proc = 1;
 
 #ifdef USE_CILK_RUNTIME
@@ -133,7 +145,7 @@ int nb_proc = 1;
     }
   }
 #endif
-
+  
 } // end namespace
   
 double kappa = 100;

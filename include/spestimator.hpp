@@ -1,233 +1,75 @@
 
-#include <execinfo.h>
 #include <string>
-#include <atomic>
-#include <map>
 #include <sstream>
-#include <stdio.h>
-#include <iostream>
-#include <fstream>
 
 #include "spperworker.hpp"
 #include "sptime.hpp"
-#include "spcallback.hpp"
+#include "spmachine.hpp"
 
 #ifndef _SPTL_SPESTIMATOR_H_
 #define _SPTL_SPESTIMATOR_H_
 
 namespace sptl {
 
+// type of the result of a complexity function
 using complexity_type = double;
-  
+
+// type to represent an amount of time in number of cycles;
+// this type is used internally by the estimator to compare predicted
+// running times
 using cost_type = double;
 
 /*---------------------------------------------------------------------*/
-/* Special cost values */
+/* Cost measurement */
 
 namespace cost {
 
-  //! an `undefined` execution time indicates that the value hasn't been computed yet
+  // an undefined execution time indicates that the value hasn't been computed yet
   static constexpr
   cost_type undefined = -1.0;
 
-  //! a `pessimistic` cost is 1 microsecond per unit of complexity
+  // a pessimistic cost is 1 microsecond per unit of complexity
   static constexpr
   cost_type pessimistic = std::numeric_limits<double>::infinity();
 
 } // end namespace
 
-/*---------------------------------------------------------------------*/
-/* File IO for reading/writing estimator values */
-  
-namespace {
-
-using constant_map_type = std::map<std::string, double>;
-  
-// values of constants which are read from a file
-static
-constant_map_type preloaded_constants;
-  
-// values of constants which are to be written to a file
-static
-constant_map_type recorded_constants;
-
-static
-void print_constant(FILE* out, std::string name, double cst) {
-  fprintf(out,         "%s %lf\n", name.c_str(), cst);
-}
-
-static
-void parse_constant(char* buf, double& cst, std::string line) {
-  sscanf(line.c_str(), "%s %lf", buf, &cst);
-}
-
-static
-std::string get_dflt_constant_path() {
-//  std::string executable = deepsea::cmdline::name_of_my_executable();
-//  return executable + ".cst";
-  return "constants.txt";
-}
-
-static
-std::string get_path_to_constants_file_from_cmdline(std::string flag) {
-  std::string outfile;
-  if (deepsea::cmdline::parse_or_default_bool(flag, false, false)) {
-    return get_dflt_constant_path();
-  } else {
-    return deepsea::cmdline::parse_or_default_string(flag + "_in", "", false);
-  }
-}
-
-static
-bool loaded = false;
-
-void try_read_constants_from_file() {
-  if (loaded) {
-    return;
-  }
-  loaded = true;
-  std::string infile_path = get_dflt_constant_path();
-  if (infile_path == "") {
-    return;
-  }
-  std::string cst_str;
-  std::ifstream infile;
-  infile.open (infile_path.c_str());
-  if (!infile.good()) {
-    return;
-  }
-  std::cerr << "Load constants from constants.txt\n";
-  while(! infile.eof()) {
-    getline(infile, cst_str);
-    if (cst_str == "") {
-      continue; // ignore trailing whitespace
-    }
-    char buf[4096];
-    double cst;
-    parse_constant(buf, cst, cst_str);
-    std::string name(buf);
-    preloaded_constants[name] = cst;
-  }
-}
-
-void try_write_constants_to_file() {
-  std::string outfile_path = get_path_to_constants_file_from_cmdline("write_csts");
-  if (outfile_path == "")
-    return;
-  static FILE* outfile;
-  outfile = fopen(outfile_path.c_str(), "w");
-  constant_map_type::iterator it;
-  for (it = recorded_constants.begin(); it != recorded_constants.end(); it++) {
-    print_constant(outfile, it->first, it->second);
-  }
-  fclose(outfile);
-}
-
-} // end namespace
 
 /*---------------------------------------------------------------------*/
 /* The estimator data structure */
   
-class estimator : public callback::client {
-//private:
-public:
+class estimator {
+private:
 
-  cost_type shared;
-
-  std::string name;    
-  
-  constexpr static const
-  long long cst_mask = (1LL << 32) - 1;
-  
-  char padding[108];
-  
-  std::atomic_llong shared_info;
-
-  cost_type get_constant() {
-    int cst_int = (shared_info.load() & cst_mask);
-    cost_type cst = *((float*)(&cst_int));
-    // else return local constant
-    return cst;
-  }
-  
-  cost_type get_constant_or_pessimistic() {
-    int cst_int = (shared_info.load() & cst_mask);
-    cost_type cst = *((float*)(&cst_int));
-    if (cst_int == 0) {
-      return cost::pessimistic;
-    } else {
-      return cst;
-    }
-  }
-
-  static constexpr
-  int backoff_nb_cycles = 1l << 17;
-  
-  static inline
-  void spin_for(uint64_t nb_cycles) {
-    cycle_counter::rdtsc_wait(nb_cycles);
-  }
-  
-  template <class T>
-  bool compare_exchange(std::atomic<T>& cell, T& expected, T desired) {
-    if (cell.compare_exchange_strong(expected, desired)) {
-      return true;
-    }
-    spin_for(backoff_nb_cycles);
-    return false;
-  }
-
-  using info_loader = union {
-    struct { float size, cst; } f;
+  // we use this union to represent the internal state
+  // of the estimator cell; the field named f is the
+  // view of the internal state of the estimator cell,
+  // and the field l a view that can be updated atomically
+  // via the compare-and-exchange instruction
+  using cell_type = union {
+    struct {
+      float cst;  // constant for estimations
+      float nmax; // max complexity measure
+    } f;
     long long l;
   };
-
-  void update(cost_type new_cst_d, complexity_type new_size_d) {
-    info_loader new_info;
-    new_info.f.cst = (float) new_cst_d;
-    new_info.f.size = (float) new_size_d;
-    info_loader info;
-    info.l = shared_info.load();
-    while (true) {
-      if (info.f.size < new_info.f.size) {
-        if (compare_exchange(shared_info, info.l, new_info.l)) {
-          break;
-        }
-      } else {
-        break;
-      }
-    }
-  }
   
-//public:
-  
-  void init() {
-    shared = cost::undefined;
-    try_read_constants_from_file();
-    constant_map_type::iterator preloaded = preloaded_constants.find(get_name());
-    if (preloaded != preloaded_constants.end()) {
-      shared = preloaded->second;
-    }
-  }
-  
-  void output() {
-    recorded_constants[name] = estimator::get_constant();
-  }
-  
-  void destroy() {
+  char padding1[128]; // to protect from false sharing
 
-  }
+  // initially, contents set to zero, indicating the
+  // undefined configuration
+  std::atomic_llong cell;
 
-  estimator() : shared_info(0) {
-    init();
-  }
+  char padding2[128]; // to protect from false sharing
 
-  estimator(std::string name) : shared_info(0) {
+  std::string name;
+    
+public:
+  
+  estimator(std::string name) : cell(0) {
     std::stringstream stream;
     stream << name.substr(0, std::min(40, (int)name.length())) << this;
     this->name = stream.str();
-    init();
-    callback::register_client(this);
   }
 
   std::string get_name() {
@@ -235,32 +77,41 @@ public:
   }
 
   bool is_undefined() {
-    return shared_info.load() == 0;
+    return cell.load() == 0;
   }
 
   void report(complexity_type complexity, cost_type elapsed) {
-    complexity = std::max((complexity_type)1, complexity);
-    double local_ticks_per_microsecond = cpu_frequency_ghz * 1000.0;
-    double elapsed_time = elapsed / local_ticks_per_microsecond;
-    cost_type measured_cst = elapsed_time / complexity;
-    if (elapsed_time > kappa) {
+    double elapsed_us = microseconds_of_cycles(elapsed);
+    if (elapsed_us > kappa) {
       return;
     }
-    update(measured_cst, complexity);
-  }
-  
-  cost_type predict(complexity_type complexity) {
     complexity = std::max((complexity_type)1, complexity);
-    info_loader info;
-    info.l = shared_info.load();
-    if (complexity > update_size_ratio * info.f.size) { // was 2
-      return kappa + 1;
+    cost_type measured_cst = elapsed_us / complexity;
+    cell_type proposed;
+    proposed.f.cst = (float)measured_cst;
+    proposed.f.nmax = (float)complexity;
+    cell_type current;
+    current.l = cell.load();
+    while (true) {
+      if (proposed.f.nmax > current.f.nmax) {
+	if (compare_exchange_with_backoff(cell, current.l, proposed.l)) {
+	  break;
+	}
+      } else {
+	break;
+      }
     }
-    if (complexity <= info.f.size) {
-      return kappa - 1;
-    }
-    // somehow, control never gets here
-    return info.f.cst * ((double) complexity) / update_size_ratio; // allow kappa * alpha runs
+  }
+
+  bool is_small(complexity_type complexity) {
+    assert(! is_undefined());
+    complexity = std::max((complexity_type)1, complexity);
+    cell_type current;
+    current.l = cell.load();
+    auto cst = current.f.cst;
+    auto nmax = current.f.nmax;
+    auto alpha = update_size_ratio;
+    return (complexity <= nmax) || ((complexity <= alpha * nmax) && (complexity * cst <= alpha * kappa));
   }
   
 };

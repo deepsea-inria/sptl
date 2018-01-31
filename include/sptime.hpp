@@ -60,6 +60,32 @@ namespace wall_clock {
 
   
 } // end namespace
+
+/*---------------------------------------------------------------------*/
+/* Atomic compare-and-exchange instruction, with backoff to deal with
+ * contention
+ */
+  
+namespace {
+  
+static constexpr
+int backoff_nb_cycles = 1l << 17;
+
+static inline
+void spin_for(uint64_t nb_cycles) {
+  cycle_counter::rdtsc_wait(nb_cycles);
+}
+
+template <class T>
+bool compare_exchange_with_backoff(std::atomic<T>& cell, T& expected, T desired) {
+  if (cell.compare_exchange_strong(expected, desired)) {
+    return true;
+  }
+  spin_for(backoff_nb_cycles);
+  return false;
+}
+
+} // end namespace
   
 } // end namespace
 
