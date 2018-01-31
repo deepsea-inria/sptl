@@ -60,7 +60,7 @@ public:
   }
 
   void report(complexity_type complexity, time::time_type elapsed) {
-    double elapsed_us = microseconds_of_cycles(elapsed);
+    double elapsed_us = cycle_counter::microseconds_of_cycles(elapsed);
     if (elapsed_us > kappa) {
       return;
     }
