@@ -51,8 +51,8 @@ public:
     this->name = stream.str();
   }
 
-  std::string get_name() {
-    return name;
+  const char* get_name() {
+    return name.c_str();
   }
 
   bool is_undefined() {

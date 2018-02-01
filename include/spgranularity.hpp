@@ -1,5 +1,6 @@
 
 #include "spestimator.hpp"
+#include "splogging.hpp"
 
 #ifndef _SPTL_GRANULARITY_H_
 #define _SPTL_GRANULARITY_H_
@@ -49,8 +50,10 @@ void _spguard(estimator& estim,
     is_small.mine() = true;
     auto t = time::now();
     seq_body();
-    estim.report(comp, time::now() - t);
+    auto elapsed = time::now() - t;
+    estim.report(comp, elapsed);
     is_small.mine() = false;
+    logging::buffer::push_sequential_run(estim.get_name(), comp, elapsed);
   } else {
     auto t_before = total_now(timer.mine());
     auto t_body = measured_run(par_body);

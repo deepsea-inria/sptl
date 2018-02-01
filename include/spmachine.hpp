@@ -15,6 +15,7 @@
 
 #include "cmdline.hpp"
 #include "spcallback.hpp"
+#include "splogging.hpp"
 
 #ifndef _SPTL_MACHINE_H_
 #define _SPTL_MACHINE_H_
@@ -149,6 +150,7 @@ void launch(int argc, char** argv, const Body& body) {
   deepsea::cmdline::set(argc, argv);
   initialize_cpuinfo();
   callback::init();
+  logging::buffer::init();
   kappa = deepsea::cmdline::parse_or_default_double("kappa", kappa);
   update_size_ratio = deepsea::cmdline::parse_or_default_double("alpha", update_size_ratio);
 #ifdef USE_CILK_PLUS_RUNTIME
@@ -167,6 +169,7 @@ void launch(int argc, char** argv, const Body& body) {
 #else
   body();
 #endif
+  logging::buffer::output();
   callback::output();
   callback::destroy();
 }
