@@ -88,18 +88,18 @@ public:
   void print_text(FILE* f, event_type e) {
     switch (e.tag) {
       case sequential_run: {
-	fprintf(f, "sequential_run\t%s\t%f%f",
-		e.u.sequential_run.name,
-		e.u.sequential_run.size,
-		e.u.sequential_run.time);
-	break;
+        fprintf(f, "sequential_run\t%s\t%f\t%f",
+                e.u.sequential_run.name,
+                e.u.sequential_run.size,
+                e.u.sequential_run.time);
+        break;
       }
       case measured_run: {
-	fprintf(f, "measured_run\t%s\t%f%f",
-		e.u.measured_run.name,
-		e.u.measured_run.size,
-		e.u.measured_run.time);
-	break;
+        fprintf(f, "measured_run\t%s\t%f\t%f",
+                e.u.measured_run.name,
+                e.u.measured_run.size,
+                e.u.measured_run.time);
+        break;
       }
     }
     fprintf(f, "\n");
@@ -123,7 +123,7 @@ public:
     std::vector<event_type> out;
     buf.iterate([&] (std::vector<event_type>& b) {
       for (auto e : b) {
-	b.push_back(e);
+        out.push_back(e);
       }
     });
     std::stable_sort(out.begin(), out.end(), [] (const event_type& e1, const event_type& e2) {
