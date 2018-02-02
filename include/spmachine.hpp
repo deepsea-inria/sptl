@@ -5,10 +5,10 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#ifdef HAVE_HWLOC
+#ifdef SPTL_HAVE_HWLOC
 #include <hwloc.h>
 #endif
-#ifdef TARGET_MAC_OS
+#ifdef SPTL_TARGET_MAC_OS
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #endif
@@ -64,12 +64,12 @@ void die (const char *fmt, ...) {
 
 namespace {
   
-#ifdef HAVE_HWLOC
+#ifdef SPTL_HAVE_HWLOC
 hwloc_topology_t topology;
 #endif
 
 void initialize_hwloc(int nb_workers, bool numa_alloc_interleaved = true) {
-#ifdef HAVE_HWLOC
+#ifdef SPTL_HAVE_HWLOC
   hwloc_topology_init(&topology);
   hwloc_topology_load(topology);
   if (numa_alloc_interleaved) {
@@ -77,7 +77,7 @@ void initialize_hwloc(int nb_workers, bool numa_alloc_interleaved = true) {
       hwloc_bitmap_dup(hwloc_topology_get_topology_cpuset(topology));
     int err = hwloc_set_membind(topology, all_cpus, HWLOC_MEMBIND_INTERLEAVE, 0);
     if (err < 0) {
-      std::err << "sptl: failed to set NUMA round-robin allocation policy\n" << std::endl;
+      die("sptl: failed to set NUMA round-robin allocation policy\n");
     }
   }
 #endif
