@@ -57,9 +57,7 @@ void _spguard(estimator& estim,
   } else {
     auto t_before = total_now(timer.mine());
     auto t_body = measured_run(par_body);
-    if (estim.is_undefined()) {
-      estim.report(comp, t_body);
-    }
+    estim.report(comp, t_body);
     total.mine() = t_before + t_body;
     timer.mine() = time::now();
   }
