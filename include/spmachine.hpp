@@ -155,7 +155,7 @@ void launch(int argc, char** argv, const Body& body) {
   update_size_ratio = deepsea::cmdline::parse_or_default_double("alpha", update_size_ratio);
 #ifdef USE_CILK_PLUS_RUNTIME
   nb_proc = deepsea::cmdline::parse_or_default_int("proc", 1);
-  __cilkrts_set_param("nworkers", std::to_string(proc).c_str());
+  __cilkrts_set_param("nworkers", std::to_string(nb_proc).c_str());
 #endif
   bool numa_alloc_interleaved = (nb_proc == 1) ? false : true;
   numa_alloc_interleaved =

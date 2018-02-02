@@ -1,4 +1,9 @@
 
+#if defined(SPTL_USE_CILK_PLUS_RUNTIME)
+#include <cilk/cilk.h>
+#include <cilk/cilk_api.h>
+#endif
+
 #include "spestimator.hpp"
 #include "splogging.hpp"
 
