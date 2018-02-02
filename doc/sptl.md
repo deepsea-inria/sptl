@@ -117,23 +117,20 @@ extension that brings fork-join parallelism to C++. The following
 table summarizes which of these systems are currently supported by
 sptl.
 
-+-----------+---------------------------------+------------------------+
-|           |Compiler flag                    | Description            |
-|           |                                 |                        |
-+-----------+---------------------------------+------------------------+
-| Sequential| `USE_SEQUENTIAL_ELISION_RUNTIME`| Sequentializes all     |
-|elision    |                                 |opportunities for       |
-|(default)  |                                 |parallelism.            |
-|           |                                 |                        |
-+-----------+---------------------------------+------------------------+
-| Cilk Plus | `USE_CILK_PLUS_RUNTIME`         | Uses the Cilk Plus     |
-|           |                                 |language extension to   |
-|           |                                 |realize parallelism.    |
-+-----------+---------------------------------+------------------------+
-| PASL      | `USE_PASL_RUNTIME`              | Uses the PASL system to|
-|           |                                 |realize parallelism.    |
-+-----------+---------------------------------+------------------------+
-
++-----------+-------------------------------------+------------------------+
+|           |Compiler flag                        | Description            |
+|           |                                     |                        |
++-----------+-------------------------------------+------------------------+
+| Sequential|`SPTL_USE_SEQUENTIAL_ELISION_RUNTIME`| Sequentializes all     |
+|elision    |                                     |opportunities for       |
+|(default)  |                                     |parallelism.            |
+|           |                                     |                        |
++-----------+-------------------------------------+------------------------+
+| Cilk Plus | `SPTL_USE_CILK_PLUS_RUNTIME`        | Uses the Cilk Plus     |
+|           |                                     |language extension to   |
+|           |                                     |realize parallelism.    |
++-----------+-------------------------------------+------------------------+
+                    
 Table: Libraries and language extensions that are currently supported by sptl.
 
 To build the example shown above, but with support for Cilk Plus,
@@ -144,7 +141,7 @@ below will build a parallel-ready binary.
 
 ~~~~~~~~~~~~~~~~~~~~~
 $ g++ -std=c++11 `print-include-directives.sh /home/foo/sptl-install/`
--fcilkplus -lcilkrts -DUSE_CILK_PLUS_RUNTIME sum.cpp -o sum.exe
+-fcilkplus -lcilkrts -DSPTL_USE_CILK_PLUS_RUNTIME sum.cpp -o sum.exe
 ...
 ~~~~~~~~~~~~~~~~~~~~~
 

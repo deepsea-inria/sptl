@@ -128,7 +128,7 @@ void initialize_cpuinfo() {
   
 int nb_proc = 1;
 
-#ifdef USE_CILK_RUNTIME
+#ifdef SPTL_USE_CILK_PLUS_RUNTIME
   static
   long seq_fib (long n){
     if (n < 2) {
@@ -153,7 +153,7 @@ void launch(int argc, char** argv, const Body& body) {
   logging::buffer::init();
   kappa = deepsea::cmdline::parse_or_default_double("kappa", kappa);
   update_size_ratio = deepsea::cmdline::parse_or_default_double("alpha", update_size_ratio);
-#ifdef USE_CILK_PLUS_RUNTIME
+#ifdef SPTL_USE_CILK_PLUS_RUNTIME
   nb_proc = deepsea::cmdline::parse_or_default_int("proc", 1);
   __cilkrts_set_param("nworkers", std::to_string(nb_proc).c_str());
 #endif
@@ -161,7 +161,7 @@ void launch(int argc, char** argv, const Body& body) {
   numa_alloc_interleaved =
     deepsea::cmdline::parse_or_default_bool("numa_alloc_interleaved", numa_alloc_interleaved, false);
   initialize_hwloc(nb_proc, numa_alloc_interleaved);
-#if defined(USE_CILK_RUNTIME)
+#if defined(SPTL_USE_CILK_PLUS_RUNTIME)
   // hack that seems to be required to initialize cilk runtime cleanly
   cilk_spawn seq_fib(2);
   cilk_sync;
