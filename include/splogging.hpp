@@ -17,7 +17,8 @@ namespace logging {
 
 using event_tag_type = enum {
   sequential_run,
-  measured_run
+  measured_run,
+  estimator_update
 };
   
 using event_type = struct {
@@ -34,6 +35,13 @@ using event_type = struct {
       double size;
       double time;
     } measured_run;
+    struct {
+      const char* name;
+      float proposed_cst;
+      float proposed_nmax;
+      float current_cst;
+      float current_nmax;
+    } estimator_update;
   } u;
 };
 
@@ -85,6 +93,20 @@ public:
   }
 
   static inline
+  void push_estimator_update(const char* name,
+                             float proposed_cst, float proposed_nmax,
+                             float current_cst, float current_nmax) {
+    event_type e;
+    e.tag = estimator_update;
+    e.u.estimator_update.name = name;
+    e.u.estimator_update.proposed_cst = proposed_cst;
+    e.u.estimator_update.proposed_nmax = proposed_nmax;
+    e.u.estimator_update.current_cst = current_cst;
+    e.u.estimator_update.current_nmax = current_nmax;
+    push(e);
+  }
+
+  static inline
   void print_text(FILE* f, event_type e) {
     switch (e.tag) {
       case sequential_run: {
@@ -99,6 +121,15 @@ public:
                 e.u.measured_run.name,
                 e.u.measured_run.size,
                 e.u.measured_run.time);
+        break;
+      }
+      case estimator_update: {
+        fprintf(f, "estimator_update\t%s\t%f\t%f\t%f\t%f",
+                e.u.estimator_update.name,
+                e.u.estimator_update.proposed_cst,
+                e.u.estimator_update.proposed_nmax,
+                e.u.estimator_update.current_cst,
+                e.u.estimator_update.current_nmax);
         break;
       }
     }

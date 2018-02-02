@@ -5,6 +5,7 @@
 #include "spperworker.hpp"
 #include "sptime.hpp"
 #include "spmachine.hpp"
+#include "splogging.hpp"
 
 #ifndef _SPTL_SPESTIMATOR_H_
 #define _SPTL_SPESTIMATOR_H_
@@ -64,8 +65,7 @@ public:
     if (elapsed_us > kappa) {
       return;
     }
-    complexity = std::max((complexity_type)1, complexity);
-    auto measured_cst = elapsed_us / complexity;
+    auto measured_cst = elapsed_us / std::max((complexity_type)1, complexity);
     cell_type proposed;
     proposed.f.cst = (float)measured_cst;
     proposed.f.nmax = (float)complexity;
@@ -74,6 +74,9 @@ public:
     while (true) {
       if (proposed.f.nmax > current.f.nmax) {
         if (compare_exchange_with_backoff(cell, current.l, proposed.l)) {
+          logging::buffer::push_estimator_update(get_name(),
+                                                 proposed.f.cst, proposed.f.nmax,
+                                                 current.f.cst, current.f.nmax);
           break;
         }
       } else {
@@ -83,7 +86,6 @@ public:
   }
 
   bool is_small(complexity_type complexity) {
-    complexity = std::max((complexity_type)1, complexity);
     cell_type current;
     current.l = cell.load();
     if (current.l == 0) {
