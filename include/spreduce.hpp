@@ -264,7 +264,8 @@ void scan(Input& in,
           const Convert_scan& convert_scan,
           const Seq_convert_scan& seq_convert_scan,
           scan_type st) {
-  const size_t k = Scan_branching_factor;
+  static constexpr
+  int k = Scan_branching_factor;
   size_t n = in.size();
   size_t m = get_nb_blocks(k, n);
   auto loop_comp = [&] (size_t _lo, size_t _hi) {
