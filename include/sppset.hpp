@@ -121,7 +121,7 @@ public:
   using pointer = value_type*;
   using const_pointer = const value_type*;
   using difference_type = ptrdiff_t;
-  using size_type = size_t;
+  using size_type = sptl::size_type;
   
 private:
   
@@ -251,7 +251,7 @@ private:
         }
       } else {
         container_type xs2;
-        xs.split((size_t)n/2, xs2);
+        xs.split((size_type)n/2, xs2);
         value_type mid = xs.back();
         container_type ys2;
         ys.split([&] (const option_type& key) {
@@ -320,7 +320,7 @@ private:
         result = { };
       } else {
         container_type xs2;
-        xs.split((size_t)n/2, xs2);
+        xs.split((size_type)n/2, xs2);
         value_type mid = xs.back();
         container_type ys2;
         ys.split([&] (const option_type& key) {
@@ -394,7 +394,7 @@ private:
         }
       } else {
         container_type xs2;
-        xs.split((size_t)n/2, xs2);
+        xs.split((size_type)n/2, xs2);
         value_type mid = xs.back();
         container_type ys2;
         ys.split([&] (const option_type& key) {

@@ -31,7 +31,7 @@ void reduce(Input_iter lo,
     return lift_comp_rng(in.lo, in.hi);
   };
   auto convert_reduce = [&] (input_type& in, Result& dst) {
-    size_t i = in.lo - lo;
+    size_type i = in.lo - lo;
     pasl::data::chunkedseq::extras::for_each_segment(in.lo, in.hi, [&] (pointer lo, pointer hi) {
       Result tmp;
       lift_rng_dst(i, lo, hi, tmp);
@@ -40,7 +40,7 @@ void reduce(Input_iter lo,
     });
   };
   auto seq_convert_reduce = [&] (input_type& in, Result& dst) {
-    size_t i = in.lo - lo;
+    size_type i = in.lo - lo;
     pasl::data::chunkedseq::extras::for_each_segment(in.lo, in.hi, [&] (pointer lo, pointer hi) {
       Result tmp;
       seq_reduce_rng_dst(i, lo, hi, tmp);
@@ -61,7 +61,7 @@ void copy_dst(Iter lo, Iter hi, Chunkedseq& dst) {
   auto lift_comp_rng = [&] (Iter lo, Iter hi) {
     return hi - lo;
   };
-  auto lift_rng_dst = [&] (size_t i, pointer lo, pointer hi, Chunkedseq& dst) {
+  auto lift_rng_dst = [&] (size_type i, pointer lo, pointer hi, Chunkedseq& dst) {
     dst.pushn_back(lo, hi - lo);
   };
   auto seq_rng_dst = lift_rng_dst;
@@ -69,7 +69,7 @@ void copy_dst(Iter lo, Iter hi, Chunkedseq& dst) {
 }
   
 template <class Item, class Chunkedseq>
-void fill_dst(size_t n, const Item& x, Chunkedseq& dst) {
+void fill_dst(size_type n, const Item& x, Chunkedseq& dst) {
   using value_type = Item;
   using output_type = level3::chunkedseq_output<Chunkedseq>;
   using input_type = level4::tabulate_input;
@@ -92,7 +92,7 @@ void for_each_segmenti(Iter lo, Iter hi, const Visit_segment_idx& visit_segment_
   output_type out;
   int id = 0;
   int result = id;
-  auto lift_rng_dst = [&] (size_t i, pointer_of<Iter> lo, pointer_of<Iter> hi, int&) {
+  auto lift_rng_dst = [&] (size_type i, pointer_of<Iter> lo, pointer_of<Iter> hi, int&) {
     visit_segment_idx(i, lo, hi);
   };
   auto seq_rng_dst = lift_rng_dst;
@@ -102,7 +102,7 @@ void for_each_segmenti(Iter lo, Iter hi, const Visit_segment_idx& visit_segment_
 template <class Iter, class Visit_segment>
 void for_each_segment(Iter lo, Iter hi, const Visit_segment& visit_segment) {
   using pointer = pointer_of<Iter>;
-  for_each_segmenti(lo, hi, [&] (size_t, pointer lo, pointer hi) {
+  for_each_segmenti(lo, hi, [&] (size_type, pointer lo, pointer hi) {
     visit_segment(lo, hi);
   });
 }
@@ -131,7 +131,7 @@ void clear(Chunkedseq& seq) {
 }
   
 template <class Chunkedseq, class Body_comp_rng, class Body_idx_dst>
-void tabulate_rng_dst(size_t n,
+void tabulate_rng_dst(size_type n,
                       const Body_comp_rng& body_comp_rng,
                       Chunkedseq& dst,
                       const Body_idx_dst& body_idx_dst) {
@@ -144,11 +144,11 @@ void tabulate_rng_dst(size_t n,
   auto convert_comp = [&] (input_type& in) {
     return body_comp_rng(in.lo, in.hi);
   };
-  size_t chunk_capacity = dst.chunk_capacity;
+  size_type chunk_capacity = dst.chunk_capacity;
   parray<value_type> tmp(chunk_capacity);
   auto convert = [&] (input_type& in, Chunkedseq& dst) {
-    dst.stream_pushn_back([&] (size_t i, size_t n) {
-      for (size_t k = 0; k < n; k++) {
+    dst.stream_pushn_back([&] (size_type i, size_type n) {
+      for (size_type k = 0; k < n; k++) {
         body_idx_dst(k + in.lo, tmp[k]);
       }
       const value_type* lo = &tmp[0];
@@ -160,24 +160,24 @@ void tabulate_rng_dst(size_t n,
 }
 
 template <class Chunkedseq, class Body_comp, class Body_idx_dst>
-void tabulate_dst(size_t n,
+void tabulate_dst(size_type n,
                   const Body_comp& body_comp,
                   Chunkedseq& dst,
                   const Body_idx_dst& body_idx_dst) {
-  parray<size_t> w = sums(n, [&] (size_t i) {
+  parray<size_type> w = sums(n, [&] (size_type i) {
     return body_comp(i);
   });
-  auto body_comp_rng = [&] (size_t lo, size_t hi) {
+  auto body_comp_rng = [&] (size_type lo, size_type hi) {
     return w[hi] - w[lo];
   };
   tabulate_rng_dst(n, body_comp_rng, dst, body_idx_dst);
 }
 
 template <class Chunkedseq, class Body_idx_dst>
-void tabulate_dst(size_t n,
+void tabulate_dst(size_type n,
                   Chunkedseq& dst,
                   const Body_idx_dst& body_idx_dst) {
-  auto body_comp_rng = [&] (size_t lo, size_t hi) {
+  auto body_comp_rng = [&] (size_type lo, size_type hi) {
     return hi - lo;
   };
   tabulate_rng_dst(n, body_comp_rng, dst, body_idx_dst);

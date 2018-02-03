@@ -25,22 +25,22 @@ template <class Chunkedseq>
 void clear(Chunkedseq& seq);
   
 template <class Item, class Chunkedseq>
-void fill_dst(size_t n, const Item& x, Chunkedseq& dst);
+void fill_dst(size_type n, const Item& x, Chunkedseq& dst);
   
 template <class Chunkedseq, class Body_comp_rng, class Body_idx_dst>
-void tabulate_rng_dst(size_t n,
+void tabulate_rng_dst(size_type n,
                       const Body_comp_rng& body_comp_rng,
                       Chunkedseq& dst,
                       const Body_idx_dst& body_idx_dst);
 
 template <class Chunkedseq, class Body_comp, class Body_idx_dst>
-void tabulate_dst(size_t n,
+void tabulate_dst(size_type n,
                   const Body_comp& body_comp,
                   Chunkedseq& dst,
                   const Body_idx_dst& body_idx_dst);
 
 template <class Chunkedseq, class Body_idx_dst>
-void tabulate_dst(size_t n,
+void tabulate_dst(size_type n,
                   Chunkedseq& dst,
                   const Body_idx_dst& body_idx_dst);
   
@@ -60,7 +60,7 @@ public:
   
   using value_type = Item;
   using allocator_type = std::allocator<Item>; //Alloc;
-  using size_type = std::size_t;
+  using size_type = sptl::size_type;
   using ptr_diff = std::ptrdiff_t;
   using reference = value_type&;
   using const_reference = const value_type&;
@@ -75,7 +75,7 @@ public:
   
 private:
   
-  void fill(size_t n, const value_type& val) {
+  void fill(size_type n, const value_type& val) {
     if (n == 0) {
       return;
     }
@@ -84,27 +84,27 @@ private:
   
 public:
   
-  pchunkedseq(size_t n = 0) {
+  pchunkedseq(size_type n = 0) {
     value_type val;
     fill(n, val);
   }
   
-  pchunkedseq(size_t n, const value_type& val) {
+  pchunkedseq(size_type n, const value_type& val) {
     fill(n, val);
   }
   
   template <class Body>
-  pchunkedseq(size_t sz, const Body& body) {
-    chunked::tabulate_dst(sz, seq, [&] (size_t i, reference dst) {
+  pchunkedseq(size_type sz, const Body& body) {
+    chunked::tabulate_dst(sz, seq, [&] (size_type i, reference dst) {
       dst = body(i);
     });
   }
   
   template <class Body_cmp, class Body>
-  pchunkedseq(size_t sz,
+  pchunkedseq(size_type sz,
               const Body_cmp& body_comp,
               const Body& body) {
-    chunked::tabulate_dst(sz, seq, body_comp, [&] (size_t i, reference dst) {
+    chunked::tabulate_dst(sz, seq, body_comp, [&] (size_type i, reference dst) {
       dst = body(i);
     });
   }

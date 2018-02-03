@@ -179,17 +179,17 @@ void scan_seq(const parray<Result>& ins,
 }
 
 static constexpr
-size_t Scan_branching_factor = 2048;
+size_type Scan_branching_factor = 2048;
 
 static inline
-size_t get_nb_blocks(size_t k, size_t n) {
+size_type get_nb_blocks(size_type k, size_type n) {
   return 1 + ((n - 1) / k);
 } 
   
 static inline
-std::pair<size_t,size_t> get_rng(size_t k, size_t n, size_t i) {
-  size_t lo = i * k;
-  size_t hi = std::min(lo + k, n);
+std::pair<size_type,size_type> get_rng(size_type k, size_type n, size_type i) {
+  size_type lo = i * k;
+  size_type hi = std::min(lo + k, n);
   return std::make_pair(lo, hi);
 }
 
@@ -207,12 +207,12 @@ void scan_rec(const parray<Result>& ins,
               scan_type st) {
   static constexpr
   int k = Scan_branching_factor;
-  size_t n = ins.size();
-  size_t m = get_nb_blocks(k, n);
-  auto loop_comp = [&] (size_t _lo, size_t _hi) {
+  size_type n = ins.size();
+  size_type m = get_nb_blocks(k, n);
+  auto loop_comp = [&] (size_type _lo, size_type _hi) {
     auto beg = ins.cbegin();
-    size_t lo = get_rng(k, n, _lo).first;
-    size_t hi = get_rng(k, n, _hi).second;
+    size_type lo = get_rng(k, n, _lo).first;
+    size_type hi = get_rng(k, n, _hi).second;
     return merge_comp_rng(beg + lo, beg + hi);
   };
   spguard([&] { return merge_comp_rng(ins.cbegin(), ins.cend()); }, [&] {
@@ -221,20 +221,20 @@ void scan_rec(const parray<Result>& ins,
     } else {
       parray<Result> partials;
       partials.reset(m);
-      parallel_for((size_t)0, m, loop_comp, [&] (size_t i) {
+      parallel_for((size_type)0, m, loop_comp, [&] (size_type i) {
         auto beg = ins.cbegin();
-        size_t lo = get_rng(k, n, i).first;
-        size_t hi = get_rng(k, n, i).second;
+        size_type lo = get_rng(k, n, i).first;
+        size_type hi = get_rng(k, n, i).second;
         out.merge(beg + lo, beg + hi, partials[i]);
       });
       parray<Result> scans;
       scans.reset(m);
       auto st2 = (is_backward_scan(st)) ? backward_exclusive_scan : forward_exclusive_scan;
       scan_rec(partials, scans.begin(), out, id, merge_comp_rng, st2);
-      parallel_for((size_t)0, m, loop_comp, [&] (size_t i) {
+      parallel_for((size_type)0, m, loop_comp, [&] (size_type i) {
         auto ins_beg = ins.cbegin();
-        size_t lo = get_rng(k, n, i).first;
-        size_t hi = get_rng(k, n, i).second;
+        size_type lo = get_rng(k, n, i).first;
+        size_type hi = get_rng(k, n, i).second;
         scan_seq(ins_beg + lo, ins_beg + hi, outs_lo + lo, out, scans[i], st);
       });
     }
@@ -266,23 +266,23 @@ void scan(Input& in,
           scan_type st) {
   static constexpr
   int k = Scan_branching_factor;
-  size_t n = in.size();
-  size_t m = get_nb_blocks(k, n);
-  auto loop_comp = [&] (size_t _lo, size_t _hi) {
-    size_t lo = get_rng(k, n, _lo).first;
-    size_t hi = get_rng(k, n, _hi).second;
+  size_type n = in.size();
+  size_type m = get_nb_blocks(k, n);
+  auto loop_comp = [&] (size_type _lo, size_type _hi) {
+    size_type lo = get_rng(k, n, _lo).first;
+    size_type hi = get_rng(k, n, _hi).second;
     return convert_reduce_comp_rng(lo, hi);
   };
-  spguard([&] { return convert_reduce_comp_rng((size_t)0, n); }, [&] {
+  spguard([&] { return convert_reduce_comp_rng((size_type)0, n); }, [&] {
     if (n <= k) {
       convert_scan(id, in, outs_lo);
     } else {
       parray<Input> splits = in.split(m);
       parray<Result> partials;
       partials.reset(m);
-      parallel_for((size_t)0, m, loop_comp, [&] (size_t i) {
-        size_t lo = get_rng(k, n, i).first;
-        size_t hi = get_rng(k, n, i).second;
+      parallel_for((size_type)0, m, loop_comp, [&] (size_type i) {
+        size_type lo = get_rng(k, n, i).first;
+        size_type hi = get_rng(k, n, i).second;
         Input in2 = in.slice(splits, lo, hi);
         convert_reduce(in2, partials[i]);
       });
@@ -290,9 +290,9 @@ void scan(Input& in,
       scans.reset(m);
       auto st2 = (is_backward_scan(st)) ? backward_exclusive_scan : forward_exclusive_scan;
       scan_rec(partials, scans.begin(), out, id, merge_comp_rng, st2);
-      parallel_for((size_t)0, m, loop_comp, [&] (size_t i) {
-        size_t lo = get_rng(k, n, i).first;
-        size_t hi = get_rng(k, n, i).second;
+      parallel_for((size_type)0, m, loop_comp, [&] (size_type i) {
+        size_type lo = get_rng(k, n, i).first;
+        size_type hi = get_rng(k, n, i).second;
         Input in2 = in.slice(splits, lo, hi);
         scan(in2, out, scans[i], outs_lo + lo, merge_comp_rng, convert_reduce_comp_rng,
              convert_reduce, convert_scan, seq_convert_scan, st);
@@ -376,32 +376,32 @@ public:
     return size() >= 2;
   }
   
-  size_t size() const {
+  size_type size() const {
     return hi - lo;
   }
   
   void split(random_access_iterator_input& dst) {
     dst = *this;
-    size_t n = size();
+    size_type n = size();
     assert(n >= 2);
     Input_iter mid = lo + (n / 2);
     hi = mid;
     dst.lo = mid;
   }
   
-  array_type split(size_t) {
+  array_type split(size_type) {
     array_type tmp;
     return tmp;
   }
   
-  self_type slice(const array_type&, size_t _lo, size_t _hi) {
+  self_type slice(const array_type&, size_type _lo, size_type _hi) {
     self_type tmp(lo + _lo, lo + _hi);
     return tmp;
   }
   
 };
   
-using tabulate_input = random_access_iterator_input<size_t>;
+using tabulate_input = random_access_iterator_input<size_type>;
   
 template <class Chunkedseq>
 class chunkedseq_input {
@@ -423,17 +423,17 @@ public:
   }
   
   void split(chunkedseq_input& dst) {
-    size_t n = seq.size() / 2;
+    size_type n = seq.size() / 2;
     seq.split(seq.begin() + n, dst.seq);
   }
   
-  array_type split(size_t) {
+  array_type split(size_type) {
     array_type tmp;
     assert(false);
     return tmp;
   }
   
-  self_type slice(const array_type&, size_t _lo, size_t _hi) {
+  self_type slice(const array_type&, size_type _lo, size_type _hi) {
     self_type tmp;
     assert(false);
     return tmp;
@@ -470,7 +470,7 @@ void reduce(Input_iter lo,
     return lift_comp_rng(in.lo, in.hi);
   };
   auto convert_reduce = [&] (input_type& in, Result& dst) {
-    size_t i = in.lo - lo;
+    size_type i = in.lo - lo;
     dst = id;
     for (Input_iter it = in.lo; it != in.hi; it++, i++) {
       Result tmp;
@@ -529,11 +529,11 @@ void scan(Input_iter lo,
   auto merge_comp_rng = [&] (const Result* lo, const Result* hi) {
     return output_comp_rng(lo, hi);
   };
-  auto convert_reduce_comp_rng = [&] (size_t lo, size_t hi) {
+  auto convert_reduce_comp_rng = [&] (size_type lo, size_type hi) {
     return lift_comp_rng(in.lo + lo, in.lo + hi);
   };
   auto convert_reduce = [&] (input_type& in, Result& dst) {
-    size_t i = in.lo - lo;
+    size_type i = in.lo - lo;
     dst = id;
     for (Input_iter it = in.lo; it != in.hi; it++, i++) {
       Result tmp;
@@ -542,7 +542,7 @@ void scan(Input_iter lo,
     }
   };
   auto convert_scan = [&] (Result _id, input_type& in, Output_iter outs_lo) {
-    size_t pos = in.lo - lo;
+    size_type pos = in.lo - lo;
     level4::scan_seq(in.lo, in.hi, outs_lo, out, _id, [&] (reference_of<Input_iter> src, Result& dst) {
       lift_idx_dst(pos++, src, dst);
     }, st);
@@ -692,7 +692,7 @@ Result reduce(Iter lo,
   using output_type = level3::cell_output<Result, Combine>;
   output_type out(id, combine);
   Result result;
-  auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
+  auto lift_idx_dst = [&] (size_type pos, reference_of<Iter> x, Result& dst) {
     dst = lift_idx(pos, x);
   };
   auto seq_reduce_rng_dst = [&] (Iter lo, Iter hi, Result& dst) {
@@ -745,7 +745,7 @@ parray<Result> scan(Iter lo,
   parray<Result> results;
   results.reset(hi - lo);
   auto outs_lo = results.begin();
-  auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
+  auto lift_idx_dst = [&] (size_type pos, reference_of<Iter> x, Result& dst) {
     dst = lift_idx(pos, x);
   };
   level3::scan(lo, hi, output_comp_rng, out, id, outs_lo, lift_comp_rng,
@@ -801,7 +801,7 @@ namespace dps {
             scan_type st) {
     using output_type = level3::cell_output<Result, Combine>;
     output_type out(id, combine);
-    auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
+    auto lift_idx_dst = [&] (size_type pos, reference_of<Iter> x, Result& dst) {
       dst = lift_idx(pos, x);
     };
     auto output_comp_rng = combine_comp_rng;
@@ -855,7 +855,7 @@ public:
     class Combine,
     class Lift_idx
   >
-  Result f(size_t i, Iter lo, Iter hi, Result id, const Combine& combine, const Lift_idx& lift_idx) {
+  Result f(size_type i, Iter lo, Iter hi, Result id, const Combine& combine, const Lift_idx& lift_idx) {
     Result r = id;
     for (auto it = lo; it != hi; it++, i++) {
       r = combine(r, lift_idx(i, *it));
@@ -878,7 +878,7 @@ public:
   class Combine,
   class Lift_idx
   >
-  Result f(size_t i, iterator lo, iterator hi, Result id, const Combine& combine, const Lift_idx& lift_idx) {
+  Result f(size_type i, iterator lo, iterator hi, Result id, const Combine& combine, const Lift_idx& lift_idx) {
     Result r = id;
     pasl::data::chunkedseq::extras::for_each(lo, hi, [&] (reference x) {
       r = combine(r, lift_idx(i++, x));
@@ -940,7 +940,7 @@ Result reduce(Iter lo,
               const Combine& combine,
               const Lift_comp_rng& lift_comp_rng,
               const Lift& lift) {
-  auto lift_idx = [&] (size_t pos, reference_of<Iter> x) {
+  auto lift_idx = [&] (size_type pos, reference_of<Iter> x) {
     return lift(x);
   };
   return reducei(lo, hi, id, combine, lift_comp_rng, lift_idx);
@@ -983,7 +983,7 @@ parray<Result> scani(Iter lo,
   output_type out(id, combine);
   using iterator = typename parray<Result>::iterator;
   auto seq_scan_rng_dst = [&] (Result _id, Iter _lo, Iter _hi, iterator outs_lo) {
-    size_t pos = _lo - lo;
+    size_type pos = _lo - lo;
     level4::scan_seq(_lo, _hi, outs_lo, out, _id, [&] (reference_of<Iter> src, Result& dst) {
       dst = lift_idx(pos++, src);
     }, st);
@@ -1028,7 +1028,7 @@ parray<Result> scan(Iter lo,
                     const Lift_comp_rng& lift_comp_rng,
                     const Lift& lift,
                     scan_type st) {
-  auto lift_idx = [&] (size_t pos, reference_of<Iter> x) {
+  auto lift_idx = [&] (size_type pos, reference_of<Iter> x) {
     return lift(x);
   };
   return scani(lo, hi, id, combine_comp_rng, combine, lift_comp_rng, lift_idx, st);
@@ -1122,7 +1122,7 @@ namespace dps {
               const Lift_comp_rng& lift_comp_rng,
               const Lift_idx& lift,
               scan_type st) {
-    auto lift_idx = [&] (size_t, reference_of<Iter> x) {
+    auto lift_idx = [&] (size_type, reference_of<Iter> x) {
       return lift(x);
     };
     return scani(lo, hi, id, combine_comp_rng, combine, outs_lo, lift_comp_rng, lift_idx, st);

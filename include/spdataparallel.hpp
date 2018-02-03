@@ -14,11 +14,11 @@ template <
   class Comp,
   class Get
 >
-size_t max_index(size_t n, const Item& id, const Comp& comp, const Get& get) {
+size_type max_index(size_type n, const Item& id, const Comp& comp, const Get& get) {
   if (n == 0) {
-    return (size_t)-1L;
+    return (size_type)-1L;
   }
-  using result_type = std::pair<size_t, Item>;
+  using result_type = std::pair<size_type, Item>;
   result_type res(0, id);
   using input_type = level4::tabulate_input;
   input_type in(0, n);
@@ -32,7 +32,7 @@ size_t max_index(size_t n, const Item& id, const Comp& comp, const Get& get) {
   using output_type = level3::cell_output<result_type, decltype(combine)>;
   output_type out(res, combine);
   auto convert_reduce = [&] (input_type& in, result_type& out) {
-    for (size_t i = in.lo; i < in.hi; i++) {
+    for (size_type i = in.lo; i < in.hi; i++) {
       const Item& x = get(i);
       if (comp(x, out.second)) {
         out = result_type(i, x);
@@ -50,11 +50,11 @@ template <
   class Comp,
   class Lift
 >
-size_t max_index(Iter lo, Iter hi, const Item& id, const Comp& comp, const Lift& lift) {
+size_type max_index(Iter lo, Iter hi, const Item& id, const Comp& comp, const Lift& lift) {
   if (hi - lo == 0) {
-    return (size_t)-1L;
+    return (size_type)-1L;
   }
-  using result_type = std::pair<size_t, Item>;
+  using result_type = std::pair<size_type, Item>;
   result_type id2(0, id);
   auto combine = [&] (result_type x, result_type y) {
     if (comp(x.second, y.second)) { // x > y
@@ -63,11 +63,11 @@ size_t max_index(Iter lo, Iter hi, const Item& id, const Comp& comp, const Lift&
       return y;
     }
   };
-  auto lift_idx = [&] (size_t i, reference_of<Iter> x) {
+  auto lift_idx = [&] (size_type i, reference_of<Iter> x) {
     return result_type(i, lift(i, x));
   };
   auto seq_reduce_rng = [&] (Iter _lo, Iter _hi) {
-    size_t i = _lo - lo;
+    size_type i = _lo - lo;
     result_type res(0, id);
     for (Iter it = _lo; it != _hi; it++, i++) {
       auto x = lift(i, *it);
@@ -85,8 +85,8 @@ template <
   class Item,
   class Comp
 >
-size_t max_index(Iter lo, Iter hi, const Item& id, const Comp& comp) {
-  return max_index(lo, hi, id, comp, [&] (size_t, const Item& x) {
+size_type max_index(Iter lo, Iter hi, const Item& id, const Comp& comp) {
+  return max_index(lo, hi, id, comp, [&] (size_type, const Item& x) {
     return x;
   });
 }
@@ -106,60 +106,60 @@ template <
   class Output,
   class F
 >
-size_t pack(Flags_iter flags_lo, Iter lo, Iter hi, Item&, const Output& out, const F f) {
-  size_t n = hi - lo;
+size_type pack(Flags_iter flags_lo, Iter lo, Iter hi, Item&, const Output& out, const F f) {
+  size_type n = hi - lo;
   if (n == 0) {
     return 0;
   }
   if (n <= pack_branching_factor) {
-    size_t m = 0;
-    for (size_t i = 0; i < n; i++) {
+    size_type m = 0;
+    for (size_type i = 0; i < n; i++) {
       if (flags_lo[i]) {
          m++;
       }
     }
     auto dst_lo = out(m);
-    for (size_t i = 0, j = 0; i < n; i++) {
+    for (size_type i = 0, j = 0; i < n; i++) {
       if (flags_lo[i]) {
         dst_lo[j++] = lo[i];
       }
     }
     return m;
   }
-  size_t nb_branches = (n + pack_branching_factor - 1) / pack_branching_factor;
-  parray<size_t> sizes(nb_branches, [&] (size_t i) {
-    size_t lo = i * pack_branching_factor;
-    size_t hi = std::min((i + 1) * pack_branching_factor, n);
-    return level1::reduce(flags_lo + lo, flags_lo + hi, (size_t)0,
-                          [&] (size_t x, size_t y) {
+  size_type nb_branches = (n + pack_branching_factor - 1) / pack_branching_factor;
+  parray<size_type> sizes(nb_branches, [&] (size_type i) {
+    size_type lo = i * pack_branching_factor;
+    size_type hi = std::min((i + 1) * pack_branching_factor, n);
+    return level1::reduce(flags_lo + lo, flags_lo + hi, (size_type)0,
+                          [&] (size_type x, size_type y) {
                             return x + y;
                           },
                           [&] (reference_of<Flags_iter> x) {
-                            return (size_t)x;
+                            return (size_type)x;
                           });
   });
-  size_t m = dps::scan(sizes.begin(), sizes.end(), (size_t)0,
-                       [&] (size_t x, size_t y) {
+  size_type m = dps::scan(sizes.begin(), sizes.end(), (size_type)0,
+                       [&] (size_type x, size_type y) {
                          return x + y;
                        }, sizes.begin(), forward_exclusive_scan);
   auto dst_lo = out(m);
-  auto comp = [&] (size_t lo, size_t hi) {
+  auto comp = [&] (size_type lo, size_type hi) {
     return hi - lo;
   };
-  parallel_for((size_t)0, nb_branches, comp, [&, dst_lo, flags_lo, sizes] (size_t i) {
-    size_t _lo = i * pack_branching_factor;
-    size_t _hi = std::min(n, (i + 1) * pack_branching_factor);
-    size_t b = i;
-    size_t offset = sizes[b];
+  parallel_for((size_type)0, nb_branches, comp, [&, dst_lo, flags_lo, sizes] (size_type i) {
+    size_type _lo = i * pack_branching_factor;
+    size_type _hi = std::min(n, (i + 1) * pack_branching_factor);
+    size_type b = i;
+    size_type offset = sizes[b];
     for (int i = _lo; i < _hi; i++) {
       if (flags_lo[i]) {
         dst_lo[offset++] = f(i, lo[i]);
       }
     }
-  }, [&, dst_lo, flags_lo, sizes] (size_t _lo, size_t _hi) {
-    size_t blo = _lo * pack_branching_factor;
-    size_t bhi = std::min(n, (_hi + 1) * pack_branching_factor);
-    size_t offset = sizes[_lo];
+  }, [&, dst_lo, flags_lo, sizes] (size_type _lo, size_type _hi) {
+    size_type blo = _lo * pack_branching_factor;
+    size_type bhi = std::min(n, (_hi + 1) * pack_branching_factor);
+    size_type offset = sizes[_lo];
     for (int i = blo; i < bhi; i++) {
       if (flags_lo[i]) {
         dst_lo[offset++] = f(i, lo[i]);
@@ -175,10 +175,10 @@ template <class Item_iter, class Flags_iter>
 parray<value_type_of<Item_iter>> pack(Item_iter lo, Item_iter hi, Flags_iter flags_lo) {
   parray<value_type_of<Item_iter>> result;
   value_type_of<Item_iter> tmp;
-  __priv::pack(flags_lo, lo, hi, tmp, [&] (size_t m) {
+  __priv::pack(flags_lo, lo, hi, tmp, [&] (size_type m) {
     result.reset(m);
     return result.begin();
-  }, [&] (size_t, reference_of<Item_iter> x) {
+  }, [&] (size_type, reference_of<Item_iter> x) {
     return x;
   });
   return result;
@@ -186,16 +186,16 @@ parray<value_type_of<Item_iter>> pack(Item_iter lo, Item_iter hi, Flags_iter fla
 
 template <class Item_iter, class Flags_iter>
 parray<value_type_of<Item_iter>> pack_seq(Item_iter lo, Item_iter hi, Flags_iter flags_lo) {
-  size_t total = 0;
+  size_type total = 0;
   parray<value_type_of<Item_iter>> result;
-  for (size_t it = 0; it < hi - lo; it++) {
+  for (size_type it = 0; it < hi - lo; it++) {
     if (flags_lo[it]) {
       total++;
     }
   }
   result.reset(total);
   total = 0;
-  for (size_t it = 0; it < hi - lo; it++) {
+  for (size_type it = 0; it < hi - lo; it++) {
     if (flags_lo[it]) {
       result[total++] = lo[it];
     }
@@ -204,13 +204,13 @@ parray<value_type_of<Item_iter>> pack_seq(Item_iter lo, Item_iter hi, Flags_iter
 }        
   
 template <class Flags_iter>
-parray<size_t> pack_index(Flags_iter lo, Flags_iter hi) {
-  parray<size_t> result;
-  size_t dummy;
-  __priv::pack(lo, lo, hi, dummy, [&] (size_t m) {
+parray<size_type> pack_index(Flags_iter lo, Flags_iter hi) {
+  parray<size_type> result;
+  size_type dummy;
+  __priv::pack(lo, lo, hi, dummy, [&] (size_type m) {
     result.reset(m);
     return result.begin();
-  }, [&] (size_t offset, reference_of<Flags_iter>) {
+  }, [&] (size_type offset, reference_of<Flags_iter>) {
     return offset;
   });
   return result;
@@ -218,16 +218,16 @@ parray<size_t> pack_index(Flags_iter lo, Flags_iter hi) {
   
 template <class Iter, class Pred_idx>
 parray<value_type_of<Iter>> filteri(Iter lo, Iter hi, const Pred_idx& pred_idx) {
-  size_t n = hi - lo;
-  parray<bool> flags(n, [&] (size_t i) {
+  size_type n = hi - lo;
+  parray<bool> flags(n, [&] (size_type i) {
     return pred_idx(i, *(lo+i));
   });
   value_type_of<Iter> dummy;
   parray<value_type_of<Iter>> dst;
-  __priv::pack(flags.cbegin(), lo, hi, dummy, [&] (size_t m) {
+  __priv::pack(flags.cbegin(), lo, hi, dummy, [&] (size_type m) {
     dst.reset(m);
     return dst.begin();
-  }, [&] (size_t, reference_of<Iter> x) {
+  }, [&] (size_type, reference_of<Iter> x) {
     return x;
   });
   return dst;
@@ -235,7 +235,7 @@ parray<value_type_of<Iter>> filteri(Iter lo, Iter hi, const Pred_idx& pred_idx) 
   
 template <class Iter, class Pred>
 parray<value_type_of<Iter>> filter(Iter lo, Iter hi, const Pred& pred) {
-  auto pred_idx = [&] (size_t, reference_of<Iter> x) {
+  auto pred_idx = [&] (size_type, reference_of<Iter> x) {
     return pred(x);
   };
   return filteri(lo, hi, pred_idx);
@@ -248,10 +248,10 @@ namespace dps {
     class Input_iter,
     class Output_iter
   >
-  size_t pack(Flags_iter flags_lo, Input_iter lo, Input_iter hi, Output_iter dst_lo) {
-    return __priv::pack(flags_lo, lo, hi, *lo, [&] (size_t) {
+  size_type pack(Flags_iter flags_lo, Input_iter lo, Input_iter hi, Output_iter dst_lo) {
+    return __priv::pack(flags_lo, lo, hi, *lo, [&] (size_type) {
       return dst_lo;
-    }, [&] (size_t, reference_of<Input_iter> x) {
+    }, [&] (size_type, reference_of<Input_iter> x) {
       return x;
     });
   }
@@ -261,9 +261,9 @@ namespace dps {
     class Output_iter,
     class Pred_idx
   >
-  size_t filteri(Input_iter lo, Input_iter hi, Output_iter dst_lo, const Pred_idx& pred_idx) {
-    size_t n = hi - lo;
-    parray<bool> flags(n, [&] (size_t i) {
+  size_type filteri(Input_iter lo, Input_iter hi, Output_iter dst_lo, const Pred_idx& pred_idx) {
+    size_type n = hi - lo;
+    parray<bool> flags(n, [&] (size_type i) {
       return pred_idx(i, *(lo+i));
     });
     return pack(flags.cbegin(), lo, hi, dst_lo);
@@ -274,8 +274,8 @@ namespace dps {
     class Output_iter,
     class Pred
   >
-  size_t filter(Input_iter lo, Input_iter hi, Output_iter dst_lo, const Pred& pred) {
-    auto pred_idx = [&] (size_t, reference_of<Input_iter> x) {
+  size_type filter(Input_iter lo, Input_iter hi, Output_iter dst_lo, const Pred& pred) {
+    auto pred_idx = [&] (size_type, reference_of<Input_iter> x) {
       return pred(x);
     };
     return filteri(lo, hi, dst_lo, pred_idx);

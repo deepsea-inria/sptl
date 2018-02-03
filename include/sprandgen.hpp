@@ -30,7 +30,8 @@ double hashd(int i) {
   return ((double) hashi(i)/((double) hash_max_int));
 }
 
-template <class T> T hash(int i) {
+template <class T>
+T hash(int i) {
   if (typeid(T) == typeid(int) || typeid(T) == typeid(long) || typeid(T) == typeid(size_t)) {
     return hashi(i);
   } else if (typeid(T) == typeid(unsigned int)) {
@@ -47,16 +48,16 @@ template <class T> T hash(int i) {
 /* General-purpose container generators */
   
 template <class Item, class Generator>
-parray<Item> gen_parray(size_t n, const Generator& g) {
-  parray<Item> tmp(n, [&] (size_t i) {
+parray<Item> gen_parray(size_type n, const Generator& g) {
+  parray<Item> tmp(n, [&] (size_type i) {
     return g(i, hashu((unsigned int)i));
   });
   return tmp;
 }
   
 template <class Item, class Generator>
-pchunkedseq<Item> gen_pchunkedseq(size_t n, const Generator& g) {
-  pchunkedseq<Item> tmp(n, [&] (size_t i) {
+pchunkedseq<Item> gen_pchunkedseq(size_type n, const Generator& g) {
+  pchunkedseq<Item> tmp(n, [&] (size_type i) {
     return g(i, hashu((unsigned int)i));
   });
   return tmp;
@@ -73,15 +74,15 @@ Integ in_range(Integ val, Integ lo, Integ hi) {
 }
 
 template <class Integ>
-parray<Integ> gen_integ_parray(size_t n, Integ lo, Integ hi) {
-  return gen_parray<Integ>(n, [&] (size_t, int hash) {
+parray<Integ> gen_integ_parray(size_type n, Integ lo, Integ hi) {
+  return gen_parray<Integ>(n, [&] (size_type, int hash) {
     return in_range((Integ)hash, lo, hi);
   });
 }
 
 template <class Integ>
-pchunkedseq<Integ> gen_integ_pchunkedseq(size_t n, Integ lo, Integ hi) {
-  return gen_pchunkedseq<Integ>(n, [&] (size_t, int hash) {
+pchunkedseq<Integ> gen_integ_pchunkedseq(size_type n, Integ lo, Integ hi) {
+  return gen_pchunkedseq<Integ>(n, [&] (size_type, int hash) {
     return in_range((Integ)hash, lo, hi);
   });
 }

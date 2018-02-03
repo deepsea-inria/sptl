@@ -23,6 +23,15 @@
 namespace sptl {
 
 /*---------------------------------------------------------------------*/
+/* Global settings */
+
+#ifdef SPTL_SIZE_BITS32
+using size_type = unsigned;
+#else
+using size_type = std::size_t;
+#endif
+
+/*---------------------------------------------------------------------*/
 /* Runtime teardown */
 
 namespace {
@@ -94,7 +103,7 @@ double cpu_frequency_ghz = 1.2;
   
 void initialize_cpuinfo() {
   float cpu_frequency_mhz = 0.0;
-#ifdef TARGET_LINUX
+#ifdef SPTL_TARGET_LINUX
   /* Get information from /proc/cpuinfo.
    * cpu MHz         : <float>             # cpu frequency in MHz
    */
@@ -108,7 +117,7 @@ void initialize_cpuinfo() {
     fclose (cpuinfo_file);
   }
 #endif
-#ifdef TARGET_MAC_OS
+#ifdef SPTL_TARGET_MAC_OS
   uint64_t freq = 0;
   size_t size;
   size = sizeof(freq);

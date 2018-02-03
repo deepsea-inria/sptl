@@ -15,7 +15,7 @@ public:
   
   using value_type = char;
   using allocator_type = std::allocator<char>;
-  using size_type = std::size_t;
+  using size_type = sptl::size_type;
   using ptr_diff = std::ptrdiff_t;
   using reference = value_type&;
   using const_reference = const value_type&;
@@ -36,24 +36,24 @@ private:
     make_null_terminated();
   }
   
-  void check(size_t i) const {
+  void check(size_type i) const {
     assert(i < size());
   }
   
 public:
   
-  pstring(size_t sz = 0)
+  pstring(size_type sz = 0)
   : chars(sz+1, ' ') {
     make_null_terminated();
   }
   
-  pstring(size_t sz, const value_type& val)
+  pstring(size_type sz, const value_type& val)
   : chars(sz+1, val) {
     make_null_terminated();
   }
   
-  pstring(size_t sz, const std::function<value_type(size_t)>& body) {
-    auto body2 = [&] (size_t i) {
+  pstring(size_type sz, const std::function<value_type(size_type)>& body) {
+    auto body2 = [&] (size_type i) {
       if (i == sz) {
         return '\0';
       } else {
@@ -67,21 +67,21 @@ public:
   pstring(const char* s)
   : chars((char*)s, (char*)s + strlen(s) + 1) { }
   
-  pstring(size_t sz,
-          const std::function<size_t(size_t)>& body_comp,
-          const std::function<value_type(size_t)>& body) {
+  pstring(size_type sz,
+          const std::function<size_type(size_type)>& body_comp,
+          const std::function<value_type(size_type)>& body) {
     assert(false);
   }
   
-  pstring(size_t sz,
-         const std::function<size_t(size_t,size_t)>& body_comp_rng,
-         const std::function<value_type(size_t)>& body) {
+  pstring(size_type sz,
+         const std::function<size_type(size_type,size_type)>& body_comp_rng,
+         const std::function<value_type(size_type)>& body) {
     assert(false);
   }
   
   pstring(std::initializer_list<value_type> xs)
   : chars(xs.size()+1) {
-    size_t i = 0;
+    size_type i = 0;
     for (auto it = xs.begin(); it != xs.end(); it++) {
       new (&chars[i++]) value_type(*it);
     }
@@ -92,7 +92,7 @@ public:
   : chars(other.chars) { }
   
   pstring(iterator lo, iterator hi) {
-    size_t n = hi - lo;
+    size_type n = hi - lo;
     chars.resize(n + 1);
     copy(lo, hi, begin());
   }
@@ -107,21 +107,21 @@ public:
     return *this;
   }
   
-  value_type& operator[](size_t i) {
+  value_type& operator[](size_type i) {
     check(i);
     return chars[i];
   }
   
-  const value_type& operator[](size_t i) const {
+  const value_type& operator[](size_type i) const {
     check(i);
     return chars[i];
   }
   
-  size_t size() const {
+  size_type size() const {
     return chars.size() - 1;
   }
   
-  size_t length() const {
+  size_type length() const {
     return size();
   }
   
@@ -129,12 +129,12 @@ public:
     chars.swap(other.chars);
   }
   
-  void resize(size_t n, const value_type& val) {
+  void resize(size_type n, const value_type& val) {
     chars.resize(n+1, val);
     make_null_terminated();
   }
   
-  void resize(size_t n) {
+  void resize(size_type n) {
     value_type val;
     resize(n, val);
   }
@@ -160,12 +160,12 @@ public:
   }
   
   pstring& operator+=(const pstring& str) {
-    size_t n1 = size();
-    size_t n2 = str.size();
-    size_t n = n1 + n2;
+    size_type n1 = size();
+    size_type n2 = str.size();
+    size_type n = n1 + n2;
     parray_type chars2;
     chars2.swap(chars);
-    chars.tabulate(n + 1, [&] (size_t i) {
+    chars.tabulate(n + 1, [&] (size_type i) {
       if (i < n1) {
         return chars2[i];
       } else if (i == n) {

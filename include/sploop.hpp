@@ -56,7 +56,7 @@ void parallel_for(Iter lo, Iter hi, const Comp_rng& comp_rng, const Body& body) 
 template <class Iter, class Body>
 void parallel_for(Iter lo, Iter hi, const Body& body) {
   auto comp_rng = [&] (Iter lo, Iter hi) {
-    return (size_t)(hi - lo);
+    return (size_type)(hi - lo);
   };
   parallel_for(lo, hi, comp_rng, body);
 }

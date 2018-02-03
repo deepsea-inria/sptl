@@ -26,7 +26,7 @@ public:
   using pointer = value_type*;
   using const_pointer = const value_type*;
   using difference_type = ptrdiff_t;
-  using size_type = size_t;
+  using size_type = sptl::size_type;
   class value_compare {
   public:
     
@@ -61,12 +61,12 @@ public:
   pmap(Iter lo, Iter hi)
   : set(lo, hi) { }
   
-  pmap(size_t sz, const std::function<value_type(size_t)>& body)
+  pmap(size_type sz, const std::function<value_type(size_type)>& body)
   : set(sz, body) { }
   
-  pmap(size_t sz,
-       const std::function<size_t(size_t)>& body_comp,
-       const std::function<value_type(size_t)>& body)
+  pmap(size_type sz,
+       const std::function<size_type(size_type)>& body_comp,
+       const std::function<value_type(size_type)>& body)
   : set(sz, body_comp, body) { }
   
   size_type size() const {
