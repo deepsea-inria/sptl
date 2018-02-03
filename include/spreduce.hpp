@@ -221,24 +221,22 @@ void scan_rec(const parray<Result>& ins,
     } else {
       parray<Result> partials;
       partials.reset(m);
-      auto b1 = [&] (size_t i) {
+      parallel_for((size_t)0, m, loop_comp, [&] (size_t i) {
         auto beg = ins.cbegin();
         size_t lo = get_rng(k, n, i).first;
         size_t hi = get_rng(k, n, i).second;
         out.merge(beg + lo, beg + hi, partials[i]);
-      };
-      parallel_for((size_t)0, m, loop_comp, b1);
+      });
       parray<Result> scans;
       scans.reset(m);
       auto st2 = (is_backward_scan(st)) ? backward_exclusive_scan : forward_exclusive_scan;
       scan_rec(partials, scans.begin(), out, id, merge_comp_rng, st2);
-      auto b2 = [&] (size_t i) {
+      parallel_for((size_t)0, m, loop_comp, [&] (size_t i) {
         auto ins_beg = ins.cbegin();
         size_t lo = get_rng(k, n, i).first;
         size_t hi = get_rng(k, n, i).second;
         scan_seq(ins_beg + lo, ins_beg + hi, outs_lo + lo, out, scans[i], st);
-      };
-      parallel_for((size_t)0, m, loop_comp, b2);
+      });
     }
   }, [&] {
     scan_seq(ins, outs_lo, out, id, st);
@@ -281,24 +279,23 @@ void scan(Input& in,
       parray<Input> splits = in.split(m);
       parray<Result> partials;
       partials.reset(m);
-      auto b1 = [&] (size_t i) {
+      parallel_for((size_t)0, m, loop_comp, [&] (size_t i) {
         size_t lo = get_rng(k, n, i).first;
         size_t hi = get_rng(k, n, i).second;
         Input in2 = in.slice(splits, lo, hi);
         convert_reduce(in2, partials[i]);
-      };
-      parallel_for((size_t)0, m, loop_comp, b1);
+      });
       parray<Result> scans;
       scans.reset(m);
       auto st2 = (is_backward_scan(st)) ? backward_exclusive_scan : forward_exclusive_scan;
       scan_rec(partials, scans.begin(), out, id, merge_comp_rng, st2);
-      auto b2 = [&] (size_t i) {
+      parallel_for((size_t)0, m, loop_comp, [&] (size_t i) {
         size_t lo = get_rng(k, n, i).first;
         size_t hi = get_rng(k, n, i).second;
         Input in2 = in.slice(splits, lo, hi);
-        scan(in2, out, scans[i], outs_lo + lo, merge_comp_rng, convert_reduce_comp_rng, convert_reduce, convert_scan, seq_convert_scan, st);
-      };
-      parallel_for((size_t)0, m, loop_comp, b2);
+        scan(in2, out, scans[i], outs_lo + lo, merge_comp_rng, convert_reduce_comp_rng,
+             convert_reduce, convert_scan, seq_convert_scan, st);
+      });
     }
   }, [&] {
     seq_convert_scan(id, in, outs_lo);
@@ -328,7 +325,8 @@ void scan(Input& in,
           const Convert_scan& convert_scan,
           const Seq_convert_scan& seq_convert_scan,
           scan_type st) {
-  scan(in, out, id, outs_lo, merge_comp_rng, convert_reduce_comp_rng, convert_reduce, convert_scan, seq_convert_scan, st);
+  scan(in, out, id, outs_lo, merge_comp_rng, convert_reduce_comp_rng,
+       convert_reduce, convert_scan, seq_convert_scan, st);
 }
   
 template <
@@ -354,7 +352,8 @@ void scan(Input& in,
   auto convert_reduce_comp = [&] (Input& in) {
     return in.size();
   };
-  scan(in, out, id, outs_lo, merge_comp_rng, convert_reduce_comp, convert_reduce, convert_scan, seq_convert_scan, st);
+  scan(in, out, id, outs_lo, merge_comp_rng, convert_reduce_comp,
+       convert_reduce, convert_scan, seq_convert_scan, st);
 }
   
 template <class Input_iter>
@@ -550,7 +549,8 @@ void scan(Input_iter lo,
   auto seq_convert_scan = [&] (Result _id, input_type& in, Output_iter outs_lo) {
     seq_scan_rng_dst(_id, in.lo, in.hi, outs_lo);
   };
-  level4::scan(in, merge_comp_rng, out, id, outs_lo, convert_reduce_comp_rng, convert_reduce, convert_scan, seq_convert_scan, st);
+  level4::scan(in, merge_comp_rng, out, id, outs_lo, convert_reduce_comp_rng,
+               convert_reduce, convert_scan, seq_convert_scan, st);
 }
 
 template <
@@ -575,7 +575,8 @@ void scan(Input_iter lo,
   auto lift_comp_rng = [&] (Input_iter lo, Input_iter hi) {
     return hi - lo;
   };
-  scan(lo, hi, output_comp_rng, out, id, outs_lo, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
+  scan(lo, hi, output_comp_rng, out, id, outs_lo, lift_comp_rng, lift_idx_dst,
+       seq_scan_rng_dst, st);
 }
   
 template <class T>
@@ -746,7 +747,8 @@ parray<Result> scan(Iter lo,
   auto lift_idx_dst = [&] (size_t pos, reference_of<Iter> x, Result& dst) {
     dst = lift_idx(pos, x);
   };
-  level3::scan(lo, hi, output_comp_rng, out, id, outs_lo, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
+  level3::scan(lo, hi, output_comp_rng, out, id, outs_lo, lift_comp_rng,
+               lift_idx_dst, seq_scan_rng_dst, st);
   return results;
 }
 
@@ -770,7 +772,8 @@ parray<Result> scan(Iter lo,
   auto lift_comp_rng = [&] (Iter lo, Iter hi) {
     return hi - lo;
   };
-  return scan(lo, hi, id, combine_comp_rng, combine, lift_comp_rng, lift_idx, seq_scan_rng_dst, st);
+  return scan(lo, hi, id, combine_comp_rng, combine, lift_comp_rng,
+              lift_idx, seq_scan_rng_dst, st);
 }
 
 namespace dps {
@@ -801,7 +804,8 @@ namespace dps {
       dst = lift_idx(pos, x);
     };
     auto output_comp_rng = combine_comp_rng;
-    level3::scan(lo, hi, output_comp_rng, out, id, outs_lo, lift_comp_rng, lift_idx_dst, seq_scan_rng_dst, st);
+    level3::scan(lo, hi, output_comp_rng, out, id, outs_lo, lift_comp_rng,
+                 lift_idx_dst, seq_scan_rng_dst, st);
   }
 
   template <
@@ -826,7 +830,8 @@ namespace dps {
     auto lift_comp_rng = [&] (Iter lo, Iter hi) {
       return hi - lo;
     };
-    scan(lo, hi, id, combine_comp_rng, combine, outs_lo, lift_comp_rng, lift_idx, seq_scan_rng_dst, st);    
+    scan(lo, hi, id, combine_comp_rng, combine, outs_lo, lift_comp_rng,
+         lift_idx, seq_scan_rng_dst, st);    
   }
   
 } // end namespace
