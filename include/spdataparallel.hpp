@@ -111,51 +111,56 @@ size_t pack(Flags_iter flags_lo, Iter lo, Iter hi, Item&, const Output& out, con
   if (n == 0) {
     return 0;
   }
-  auto combine = [&] (size_t x, size_t y) {
-    return x + y;
-  };
-  auto lift = [&] (reference_of<Flags_iter> x) {
-    return (size_t)x;
-  };
   if (n <= pack_branching_factor) {
-    int total = 0;
-    for (int i = 0; i < n; i++) {
+    size_t m = 0;
+    for (size_t i = 0; i < n; i++) {
       if (flags_lo[i]) {
-         total++;
+         m++;
       }
     }
-    auto dst_lo = out(total);
-    total = 0;
-    for (int i = 0; i < n; i++) {
+    auto dst_lo = out(m);
+    for (size_t i = 0, j = 0; i < n; i++) {
       if (flags_lo[i]) {
-        dst_lo[total++] = lo[i];
+        dst_lo[j++] = lo[i];
       }
-    } return total;
+    }
+    return m;
   }
-  size_t len = (n + pack_branching_factor - 1) / pack_branching_factor;
-  auto body = [&] (size_t i) {
-    size_t l = i * pack_branching_factor;
-    size_t r = std::min((i + 1) * pack_branching_factor, n);
-    return level1::reduce(flags_lo + l, flags_lo + r, (size_t)0, combine, lift);
-  };
-  parray<size_t> sizes(len, body);
-  size_t m = dps::scan(sizes.begin(), sizes.end(), (size_t)0, combine, sizes.begin(), forward_exclusive_scan);
+  size_t nb_branches = (n + pack_branching_factor - 1) / pack_branching_factor;
+  parray<size_t> sizes(nb_branches, [&] (size_t i) {
+    size_t lo = i * pack_branching_factor;
+    size_t hi = std::min((i + 1) * pack_branching_factor, n);
+    return level1::reduce(flags_lo + lo, flags_lo + hi, (size_t)0,
+                          [&] (size_t x, size_t y) {
+                            return x + y;
+                          },
+                          [&] (reference_of<Flags_iter> x) {
+                            return (size_t)x;
+                          });
+  });
+  size_t m = dps::scan(sizes.begin(), sizes.end(), (size_t)0,
+                       [&] (size_t x, size_t y) {
+                         return x + y;
+                       }, sizes.begin(), forward_exclusive_scan);
   auto dst_lo = out(m);
-  parallel_for((size_t)0, len, [&] (size_t l, size_t r) { return r - l; }, [&, dst_lo, flags_lo, sizes] (size_t i) {
-    size_t l = i * pack_branching_factor;
-    size_t r = std::min(n, (i + 1) * pack_branching_factor);
+  auto comp = [&] (size_t lo, size_t hi) {
+    return hi - lo;
+  };
+  parallel_for((size_t)0, nb_branches, comp, [&, dst_lo, flags_lo, sizes] (size_t i) {
+    size_t _lo = i * pack_branching_factor;
+    size_t _hi = std::min(n, (i + 1) * pack_branching_factor);
     size_t b = i;
     size_t offset = sizes[b];
-    for (int i = l; i < r; i++) {
+    for (int i = _lo; i < _hi; i++) {
       if (flags_lo[i]) {
         dst_lo[offset++] = f(i, lo[i]);
       }
     }
-  }, [&, dst_lo, flags_lo, sizes] (size_t l, size_t r) {
-    size_t ll = l * pack_branching_factor;
-    size_t rr = std::min(n, (r + 1) * pack_branching_factor);
-    size_t offset = sizes[l];
-    for (int i = ll; i < rr; i++) {
+  }, [&, dst_lo, flags_lo, sizes] (size_t _lo, size_t _hi) {
+    size_t blo = _lo * pack_branching_factor;
+    size_t bhi = std::min(n, (_hi + 1) * pack_branching_factor);
+    size_t offset = sizes[_lo];
+    for (int i = blo; i < bhi; i++) {
       if (flags_lo[i]) {
         dst_lo[offset++] = f(i, lo[i]);
       }
