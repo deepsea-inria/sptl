@@ -3,7 +3,7 @@
 
 #include "spparray.hpp"
 #include "sppstring.hpp"
-#include "sppchunkedseq.hpp"
+#include "sppchunkedseqbase.hpp"
 
 #ifndef _SPTL_IO_H_
 #define _SPTL_IO_H_
