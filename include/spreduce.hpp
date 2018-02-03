@@ -1101,7 +1101,7 @@ namespace dps {
       level2::dps::scan(lo, hi, id, combine_comp_rng, combine, outs_lo, lift_comp_rng, lift_idx, seq_scan_rng_dst, st);
       return combine(*outs_lo, lift_idx(0, v));
     }
-    assert(false);
+    die("impossible");
   }
 
   template <
@@ -1122,7 +1122,7 @@ namespace dps {
               const Lift_comp_rng& lift_comp_rng,
               const Lift_idx& lift,
               scan_type st) {
-    auto lift_idx = [&] (size_t pos, reference_of<Iter> x) {
+    auto lift_idx = [&] (size_t, reference_of<Iter> x) {
       return lift(x);
     };
     return scani(lo, hi, id, combine_comp_rng, combine, outs_lo, lift_comp_rng, lift_idx, st);
