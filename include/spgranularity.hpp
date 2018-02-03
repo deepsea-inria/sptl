@@ -49,6 +49,7 @@ void _spguard(estimator& estim,
               const Seq_body& seq_body) {
   if (is_small.mine()) {
     seq_body();
+    return;
   }
   complexity_type comp = (complexity_type)compexity();
   if (estim.is_small(comp)) {
