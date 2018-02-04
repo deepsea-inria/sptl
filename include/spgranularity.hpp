@@ -122,19 +122,17 @@ void spguard(const Complexity& compexity,
 template <
   const char* ename,
   class Complexity,
-  class Par_body,
-  class Seq_body
+  class Par_body
   >
 void spguard(const Complexity& compexity,
              const Par_body& par_body) {
-  using wrapper = estim_wrp<ename, Complexity, Par_body, Seq_body>;
+  using wrapper = estim_wrp<ename, Complexity, Par_body, Par_body>;
   _spguard(wrapper::e, compexity, par_body, par_body);
 }
   
 template <
   class Complexity,
-  class Par_body,
-  class Seq_body
+  class Par_body
   >
 void spguard(const Complexity& compexity,
              const Par_body& par_body) {
