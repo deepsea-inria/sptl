@@ -69,9 +69,9 @@ public:
     cell_type proposed;
     proposed.f.cst = (float)measured_cst;
     proposed.f.nmax = (float)complexity;
-    cell_type current;
-    current.l = cell.load();
     while (true) {
+      cell_type current;
+      current.l = cell.load();
       if (proposed.f.nmax > current.f.nmax) {
         if (compare_exchange_with_backoff(cell, current.l, proposed.l)) {
           logging::buffer::push_estimator_update(get_name(),
