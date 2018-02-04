@@ -160,8 +160,8 @@ void launch(int argc, char** argv, const Body& body) {
   initialize_cpuinfo();
   callback::init();
   logging::buffer::init();
-  kappa = deepsea::cmdline::parse_or_default_double("kappa", kappa);
-  update_size_ratio = deepsea::cmdline::parse_or_default_double("alpha", update_size_ratio);
+  kappa = deepsea::cmdline::parse_or_default_double("sptl_kappa", kappa);
+  update_size_ratio = deepsea::cmdline::parse_or_default_double("sptl_alpha", update_size_ratio);
 #ifdef SPTL_USE_CILK_PLUS_RUNTIME
   nb_proc = deepsea::cmdline::parse_or_default_int("proc", 1);
   __cilkrts_set_param("nworkers", std::to_string(nb_proc).c_str());
