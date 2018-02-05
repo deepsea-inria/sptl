@@ -157,15 +157,16 @@ double update_size_ratio = 1.2; // aka alpha
 template <class Body>
 void launch(int argc, char** argv, const Body& body) {
   deepsea::cmdline::set(argc, argv);
+#ifdef SPTL_USE_CILK_PLUS_RUNTIME
+  nb_proc = deepsea::cmdline::parse_or_default_int("sptl_proc", -1);
+  nb_proc = std::max(1, nb_proc); // nb_proc = 1, defaultly
+  __cilkrts_set_param("nworkers", std::to_string(nb_proc).c_str());
+#endif
   initialize_cpuinfo();
   callback::init();
   logging::buffer::init();
   kappa = deepsea::cmdline::parse_or_default_double("sptl_kappa", kappa);
   update_size_ratio = deepsea::cmdline::parse_or_default_double("sptl_alpha", update_size_ratio);
-#ifdef SPTL_USE_CILK_PLUS_RUNTIME
-  nb_proc = deepsea::cmdline::parse_or_default_int("proc", 1);
-  __cilkrts_set_param("nworkers", std::to_string(nb_proc).c_str());
-#endif
   bool numa_alloc_interleaved = (nb_proc == 1) ? false : true;
   numa_alloc_interleaved =
     deepsea::cmdline::parse_or_default_bool("numa_alloc_interleaved", numa_alloc_interleaved, false);
