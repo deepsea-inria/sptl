@@ -143,6 +143,16 @@ void spguard(const Complexity& compexity,
 /* Fork join */
 
 namespace {
+
+#ifdef SPTL_USE_FIBRIL
+template <class Fct>
+__attribute__((noinline, hot, optimize(3)))
+void my_fibril_fork(const Fct& fct, fibril_t * f) {
+  fibrili_push(f);
+  fct();
+  if (!fibrili_pop()) fibrili_resume(f);
+}
+#endif
     
 template <class Body_fct1, class Body_fct2>
 void primitive_fork2(const Body_fct1& f1, const Body_fct2& f2) {
@@ -150,6 +160,12 @@ void primitive_fork2(const Body_fct1& f1, const Body_fct2& f2) {
   cilk_spawn f1();
   f2();
   cilk_sync;
+#elif defined(SPTL_USE_FIBRIL)
+  fibril_t fr;
+  fibril_init(&fr);
+  fibrili_membar(my_fibril_fork(f1, &fr));
+  f2();
+  fibril_join(&fr);
 #else
   f1();
   f2();

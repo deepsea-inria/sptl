@@ -13,6 +13,12 @@
 #include <sys/sysctl.h>
 #endif
 
+#ifdef SPTL_USE_FIBRIL
+extern "C" {
+#include <fibril.h>
+}
+#endif
+
 #include "cmdline.hpp"
 #include "spcallback.hpp"
 #include "splogging.hpp"
@@ -153,14 +159,17 @@ int nb_proc = 1;
 double kappa = 100;
 
 double update_size_ratio = 1.2; // aka alpha
-  
+
 template <class Body>
 void launch(int argc, char** argv, const Body& body) {
   deepsea::cmdline::set(argc, argv);
-#ifdef SPTL_USE_CILK_PLUS_RUNTIME
   nb_proc = deepsea::cmdline::parse_or_default_int("sptl_proc", -1);
   nb_proc = std::max(1, nb_proc); // nb_proc = 1, defaultly
+#ifdef SPTL_USE_CILK_PLUS_RUNTIME
   __cilkrts_set_param("nworkers", std::to_string(nb_proc).c_str());
+#endif
+#ifdef SPTL_USE_FIBRIL
+  fibril_rt_init(nb_proc);
 #endif
   initialize_cpuinfo();
   callback::init();
@@ -182,6 +191,9 @@ void launch(int argc, char** argv, const Body& body) {
   logging::buffer::output();
   callback::output();
   callback::destroy();
+#ifdef SPTL_USE_FIBRIL
+    fibril_rt_exit();
+#endif
 }
   
 } // end namespace
