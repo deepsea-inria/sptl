@@ -8,7 +8,7 @@ INCLUDE_FILES=$(wildcard $(CHUNKEDSEQ_HOME)/*.hpp) $(wildcard $(CMDLINE_HOME)/*.
 
 INCLUDE_DIRECTIVES=-I $(CHUNKEDSEQ_HOME) -I $(CMDLINE_HOME) -I $(SPTL_HOME)
 
-COMMON_PREFIX=-std=c++11 -g -O0 -DTARGET_LINUX -Wno-subobject-linkage
+COMMON_PREFIX=-std=c++11 -g3 -Og -DTARGET_LINUX -Wno-subobject-linkage
 
 %.bin: %.cpp $(INCLUDE_FILES)
 	g++ $(COMMON_PREFIX) $(INCLUDE_DIRECTIVES) -o $@ $<
