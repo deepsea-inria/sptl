@@ -160,7 +160,7 @@ size_type pack(Flags_iter flags_lo, Iter lo, Iter hi, Item&, const Output& out, 
     size_type blo = _lo * pack_branching_factor;
     size_type bhi = std::min(n, (_hi + 1) * pack_branching_factor);
     size_type offset = sizes[_lo];
-    for (int i = blo; i < bhi; i++) {
+    for (auto i = blo; i < bhi; i++) {
       if (flags_lo[i]) {
         dst_lo[offset++] = f(i, lo[i]);
       }
