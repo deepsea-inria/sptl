@@ -13,7 +13,11 @@
 #include <sys/sysctl.h>
 #endif
 
-#ifdef SPTL_USE_FIBRIL
+
+#if defined(SPTL_USE_CILK_PLUS_RUNTIME)
+#include <cilk/cilk.h>
+#include <cilk/cilk_api.h>
+#elif defined(SPTL_USE_FIBRIL)
 extern "C" {
 #include <fibril.h>
 }
@@ -141,17 +145,17 @@ void initialize_cpuinfo() {
 /*---------------------------------------------------------------------*/
 /* SPTL initialization */
   
-int nb_proc = 1;
+int nb_proc = -1;
 
 #ifdef SPTL_USE_CILK_PLUS_RUNTIME
-  static
-  long seq_fib (long n){
-    if (n < 2) {
-      return n;
-    } else {
-      return seq_fib (n - 1) + seq_fib (n - 2);
-    }
+static
+long ___silly_cilk (long n){
+  if (n < 2) {
+    return n;
+  } else {
+    return ___silly_cilk (n - 1) + ___silly_cilk (n - 2);
   }
+}
 #endif
   
 } // end namespace
@@ -161,14 +165,8 @@ double kappa = 100;
 double update_size_ratio = 1.2; // aka alpha
 
 template <class Body>
-void launch(int argc, char** argv, const Body& body) {
-  deepsea::cmdline::set(argc, argv);
-  nb_proc = deepsea::cmdline::parse_or_default_int("sptl_proc", -1);
-  nb_proc = std::max(1, nb_proc); // nb_proc = 1, defaultly
-#ifdef SPTL_USE_CILK_PLUS_RUNTIME
-  __cilkrts_set_param("nworkers", std::to_string(nb_proc).c_str());
-#endif
-#ifdef SPTL_USE_FIBRIL
+void _launch(int argc, char** argv, const Body& body) {
+#if defined(SPTL_USE_FIBRIL)
   fibril_rt_init(nb_proc);
 #endif
   initialize_cpuinfo();
@@ -182,12 +180,10 @@ void launch(int argc, char** argv, const Body& body) {
   initialize_hwloc(nb_proc, numa_alloc_interleaved);
 #if defined(SPTL_USE_CILK_PLUS_RUNTIME)
   // hack that seems to be required to initialize cilk runtime cleanly
-  cilk_spawn seq_fib(2);
+  cilk_spawn ___silly_cilk(2);
   cilk_sync;
-  body();
-#else
-  body();
 #endif
+  body();
   logging::buffer::output();
   callback::output();
   callback::destroy();
@@ -195,6 +191,31 @@ void launch(int argc, char** argv, const Body& body) {
     fibril_rt_exit();
 #endif
 }
+
+template <class Body>
+void launch(int argc, char** argv, const Body& body) {
+  deepsea::cmdline::set(argc, argv);
+  if (nb_proc == -1) {
+    nb_proc = deepsea::cmdline::parse_or_default_int("sptl_proc", -1);
+    nb_proc = std::max(1, nb_proc); // nb_proc = 1, defaultly
+#if defined(SPTL_USE_CILK_PLUS_RUNTIME)
+    // this operation will fail if it is called inside the same funcion call that
+    // first initializes Cilk...
+    int cilk_failed = __cilkrts_set_param("nworkers", std::to_string(nb_proc).c_str());
+    if (cilk_failed) {
+      die("Failed to set number of processors to %d in Cilk runtime", nb_proc);
+    }
+#endif
+  }
+  _launch(argc, argv, body);
+}
+  
+template <class Body>
+void launch(int argc, char** argv, unsigned nb_workers, const Body& body) {
+  nb_proc = nb_workers;
+  sptl::launch(argc, argv, body);
+}
+
   
 } // end namespace
 
