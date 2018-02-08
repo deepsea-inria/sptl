@@ -198,15 +198,15 @@ void launch(int argc, char** argv, const Body& body) {
   if (nb_proc == -1) {
     nb_proc = deepsea::cmdline::parse_or_default_int("sptl_proc", -1);
     nb_proc = std::max(1, nb_proc); // nb_proc = 1, defaultly
-#if defined(SPTL_USE_CILK_PLUS_RUNTIME)
-    // this operation will fail if it is called inside the same funcion call that
-    // first initializes Cilk...
-    int cilk_failed = __cilkrts_set_param("nworkers", std::to_string(nb_proc).c_str());
-    if (cilk_failed) {
-      die("Failed to set number of processors to %d in Cilk runtime", nb_proc);
-    }
-#endif
   }
+#if defined(SPTL_USE_CILK_PLUS_RUNTIME)
+  // this operation will fail if it is called inside the same funcion call that
+  // first initializes Cilk...
+  int cilk_failed = __cilkrts_set_param("nworkers", std::to_string(nb_proc).c_str());
+  if (cilk_failed) {
+    die("Failed to set number of processors to %d in Cilk runtime", nb_proc);
+  }
+#endif
   _launch(argc, argv, body);
 }
   
