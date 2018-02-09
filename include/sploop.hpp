@@ -17,8 +17,8 @@ void parallel_for(Iter lo,
                   const Comp_rng& comp_rng,
                   const Body& body,
                   const Seq_body_rng& seq_body_rng) {
-#if defined(SPTL_MANUAL_CONTROL) && defined(SPTL_USE_CILK_PLUS_RUNTIME)
-  cilk_for (Iter i = lo; i < hi; i++) {
+#ifdef SPTL_USE_SEQUENTIAL_ELISION_RUNTIME
+  for (Iter i = lo; i < hi; i++) {
     body(i);
   }
   return;

@@ -42,6 +42,14 @@ void _spguard(estimator& estim,
               const Complexity& compexity,
               const Par_body& par_body,
               const Seq_body& seq_body) {
+#ifdef SPTL_USE_SEQUENTIAL_ELISION_RUNTIME
+  if ((complexity_type)compexity() < 10000.0) {
+    seq_body();
+  } else {
+    par_body();
+  }
+  return;
+#endif
   if (is_small.mine()) {
     seq_body();
     return;
@@ -161,7 +169,7 @@ void primitive_fork2(const Body_fct1& f1, const Body_fct2& f2) {
   fibrili_membar(my_fibril_fork(f1, &fr));
   f2();
   fibril_join(&fr);
-#else
+#else // if defined(SPTL_USE_SEQUENTIAL_ELISION_RUNTIME)
   f1();
   f2();
 #endif
