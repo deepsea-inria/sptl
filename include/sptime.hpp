@@ -12,10 +12,10 @@ namespace sptl {
 
 /*---------------------------------------------------------------------*/
 /* Cycle counter */
-
-using cycles_type = uint64_t;
   
 namespace cycle_counter {
+
+  using cycles_type = uint64_t;
 
   namespace {
     
@@ -27,7 +27,8 @@ namespace cycle_counter {
     }
 
   } // end namespace
-  
+
+  // spin wait for at least n cycles
   static inline
   void wait(cycles_type n) {
     const cycles_type start = rdtsc();
@@ -40,14 +41,6 @@ namespace cycle_counter {
   cycles_type now() {
     return rdtsc();
   }
-
-  // pre: cpu_frequency_ghz is initialized by sptl runtime
-  // later: enforce the precondition by dynamic check
-  static
-  double microseconds_of_cycles(double c) {
-    double ticks_per_microsecond = cpu_frequency_ghz * 1000.0;
-    return c / ticks_per_microsecond;
-  }
   
 } // end namespace
 
@@ -56,23 +49,43 @@ namespace cycle_counter {
   
 namespace time {
 
-  using time_type = double;
+#ifdef SPTL_USE_WALL_CLOCK
+
+  using time_type = uint64_t;
 
   static inline
   time_type now() {
-    return (time_type)cycle_counter::now();
+    struct timespec t;
+    clock_gettime(CLOCK_REALTIME, &t);
+    return t.tv_sec * 1000000000LL + t.tv_nsec;
   }
 
-  static inline
-  time_type elapsed(time_type time_start, time_type time_end) {
-    return time_end - time_start;
+  // pre: cpu_frequency_ghz is initialized by sptl runtime
+  // later: enforce the precondition by dynamic check
+  static
+  double microseconds_of(time_type cycles) {
+    return (double)cycles / 1000.0;
   }
 
-  static inline
-  time_type since(time_type time_start) {
-    return elapsed(time_start, now());
-  }
+#else // (defaultly) use the cycle counter
   
+  using time_type = cycle_counter::cycles_type;
+
+  static inline
+  time_type now() {
+    return cycle_counter::now();
+  }
+
+  // pre: cpu_frequency_ghz is initialized by sptl runtime
+  // later: enforce the precondition by dynamic check
+  static
+  double microseconds_of(time_type cycles) {
+    double ticks_per_microsecond = cpu_frequency_ghz * 1000.0;
+    return (double)cycles / ticks_per_microsecond;
+  }
+
+#endif
+
 } // end namespace
 
 /*---------------------------------------------------------------------*/
@@ -81,10 +94,10 @@ namespace time {
 namespace {
   
 static constexpr
-int backoff_nb_cycles = 1l << 17;
+cycle_counter::cycles_type backoff_nb_cycles = 1l << 12;
 
 static inline
-void spin_for(uint64_t nb_cycles) {
+void spin_for(cycle_counter::cycles_type nb_cycles) {
   cycle_counter::wait(nb_cycles);
 }
 
