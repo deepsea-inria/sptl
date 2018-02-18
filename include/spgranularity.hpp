@@ -179,7 +179,12 @@ void primitive_fork2(const Body_fct1& f1, const Body_fct2& f2) {
   
 template <class Body_left, class Body_right>
 void fork2(const Body_left& bl, const Body_right& br) {
-  if (is_small.mine()) {
+#ifdef SPTL_USE_SEQUENTIAL_ELISION_RUNTIME
+  bool sequentialize = true;
+#else
+  bool sequentialize = is_small.mine();
+#endif
+  if (sequentialize) {
     bl();
     br();
     return;
