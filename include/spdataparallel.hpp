@@ -96,6 +96,33 @@ size_type max_index(Iter lo, Iter hi, const Item& id, const Comp& comp) {
 
 namespace __priv {
 
+// later: can we generalize this algorithm so that we can simultaneously
+// use the int-packing optimization and support non-contiguous layouts
+// of the flags array
+// sums a sequence of n boolean flags
+// an optimized version that sums blocks of 4 booleans by treating
+// them as an integer
+// Only optimized when n is a multiple of 512 and Fl is 4byte aligned
+size_type sum_flags_serial(const bool *Fl, size_type n) {
+  size_type r = 0;
+  if ((n >= 128) && ((n & 511) == 0) && (((long) Fl & 3) == 0)) {
+    const int* IFl = (const int*) Fl;
+    for (int k = 0; k < (n >> 9); k++) {
+      int rr = 0;
+      for (int j = 0; j < 128; j++) {
+        rr += IFl[j];
+      }
+      r += (rr&255) + ((rr>>8)&255) + ((rr>>16)&255) + ((rr>>24)&255);
+      IFl += 128;
+    }
+  } else {
+    for (size_type j = 0; j < n; j++) {
+      r += Fl[j];
+    }
+  }
+  return r;
+}
+
 static constexpr
 int pack_branching_factor = 2048;
   
@@ -112,12 +139,7 @@ size_type pack(Flags_iter flags_lo, Iter lo, Iter hi, Item&, const Output& out, 
     return 0;
   }
   if (n <= pack_branching_factor) {
-    size_type m = 0;
-    for (size_type i = 0; i < n; i++) {
-      if (flags_lo[i]) {
-         m++;
-      }
-    }
+    size_type m = sum_flags_serial(flags_lo, n);
     auto dst_lo = out(m);
     for (size_type i = 0, j = 0; i < n; i++) {
       if (flags_lo[i]) {
@@ -130,12 +152,14 @@ size_type pack(Flags_iter flags_lo, Iter lo, Iter hi, Item&, const Output& out, 
   parray<size_type> sizes(nb_branches, [&] (size_type i) {
     size_type lo = i * pack_branching_factor;
     size_type hi = std::min((i + 1) * pack_branching_factor, n);
-    return level1::reduce(flags_lo + lo, flags_lo + hi, (size_type)0,
+    return level2::reduce(flags_lo + lo, flags_lo + hi, (size_type)0,
                           [&] (size_type x, size_type y) {
                             return x + y;
                           },
-                          [&] (reference_of<Flags_iter> x) {
-                            return (size_type)x;
+                          [&] (size_type, reference_of<Flags_iter> x) {
+                            return x ? 1 : 0;
+                          }, [&] (Flags_iter lo, Flags_iter hi) {
+                            return (size_type)sum_flags_serial(lo, hi - lo);
                           });
   });
   size_type m = dps::scan(sizes.begin(), sizes.end(), (size_type)0,
@@ -151,7 +175,7 @@ size_type pack(Flags_iter flags_lo, Iter lo, Iter hi, Item&, const Output& out, 
     size_type _hi = std::min(n, (i + 1) * pack_branching_factor);
     size_type b = i;
     size_type offset = sizes[b];
-    for (int i = _lo; i < _hi; i++) {
+    for (auto i = _lo; i < _hi; i++) {
       if (flags_lo[i]) {
         dst_lo[offset++] = f(i, lo[i]);
       }
