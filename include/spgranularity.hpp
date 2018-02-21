@@ -39,11 +39,11 @@ template <
   class Seq_body
   >
 void _spguard(estimator& estim,
-              const Complexity& compexity,
+              const Complexity& complexity,
               const Par_body& par_body,
               const Seq_body& seq_body) {
 #ifdef SPTL_USE_SEQUENTIAL_ELISION_RUNTIME
-  if ((complexity_type)compexity() < 10000.0) {
+  if ((complexity_type)complexity() < 10000.0) {
     seq_body();
   } else {
     par_body();
@@ -54,7 +54,7 @@ void _spguard(estimator& estim,
     seq_body();
     return;
   }
-  complexity_type comp = (complexity_type)compexity();
+  complexity_type comp = (complexity_type)complexity();
   if (estim.is_small(comp)) {
     is_small.mine() = true;
     auto t = time::now();
@@ -104,11 +104,11 @@ template <
   class Par_body,
   class Seq_body
   >
-void spguard(const Complexity& compexity,
+void spguard(const Complexity& complexity,
              const Par_body& par_body,
              const Seq_body& seq_body) {
   using wrapper = estim_wrp<ename, Complexity, Par_body, Seq_body>;
-  _spguard(wrapper::e, compexity, par_body, seq_body);
+  _spguard(wrapper::e, complexity, par_body, seq_body);
 }
   
 template <
@@ -116,10 +116,10 @@ template <
   class Par_body,
   class Seq_body
   >
-void spguard(const Complexity& compexity,
+void spguard(const Complexity& complexity,
              const Par_body& par_body,
              const Seq_body& seq_body) {
-  spguard<dflt_ename>(compexity, par_body, seq_body);
+  spguard<dflt_ename>(complexity, par_body, seq_body);
 }
 
 template <
@@ -127,19 +127,19 @@ template <
   class Complexity,
   class Par_body
   >
-void spguard(const Complexity& compexity,
+void spguard(const Complexity& complexity,
              const Par_body& par_body) {
   using wrapper = estim_wrp<ename, Complexity, Par_body, Par_body>;
-  _spguard(wrapper::e, compexity, par_body, par_body);
+  _spguard(wrapper::e, complexity, par_body, par_body);
 }
   
 template <
   class Complexity,
   class Par_body
   >
-void spguard(const Complexity& compexity,
+void spguard(const Complexity& complexity,
              const Par_body& par_body) {
-  spguard<dflt_ename>(compexity, par_body, par_body);
+  spguard<dflt_ename>(complexity, par_body, par_body);
 }
   
 /*---------------------------------------------------------------------*/
