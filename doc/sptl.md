@@ -5387,10 +5387,10 @@ Table: Template parameters used by comparison-based sorting and merging.
 class Compare;
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The comparison-function object (i.e. an object satisfies the
-requirements of `Compare`) returns ​true if the first argument is less
-than (i.e. is ordered before) the second.  The signature of the
-comparison function should be equivalent to the following:
+The comparison-function object is a functor that implements the
+interface of `Compare`: the functor returns true if the first argument
+is less than (i.e., is ordered before) the second. The signature of
+the comparison function should be equivalent to the following.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.cpp}
 bool operator()(const Item& x, const Item& y);
