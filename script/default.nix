@@ -17,11 +17,12 @@ stdenv.mkDerivation rec {
   buildInputs =
     let docs =
       if buildDocs then [
-        pkgs.pandoc pkgs.texlive.combined.scheme-full
+        pkgs.pandoc
+        pkgs.texlive.combined.scheme-full
       ] else
         [];
     in
-    docs ++ [ chunkedseq ];
+    [ chunkedseq ] ++ docs;
         
   buildPhase = if buildDocs then ''
     make -C doc sptl.pdf sptl.html
@@ -36,7 +37,7 @@ stdenv.mkDerivation rec {
     mkdir -p $out/example/
     cp example/* $out/example/
     mkdir -p $out/doc
-    cp doc/sptl.* doc/Makefile doc/sptl.css $out/doc/
+    cp doc/sptl.* doc/Makefile $out/doc/
   '';
 
   meta = {
