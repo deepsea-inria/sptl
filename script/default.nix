@@ -1,8 +1,8 @@
 { pkgs   ? import <nixpkgs> {},
   stdenv ? pkgs.stdenv,
   sptlSrc ? ../.,
-  cmdlineSrc ? ../../cmdline,
-  chunkedseqSrc ? ../../chunkedseq,
+  cmdline ? ../../cmdline,
+  chunkedseq ? ../../chunkedseq,
   buildDocs ? false
 }:
 
@@ -19,7 +19,7 @@ stdenv.mkDerivation rec {
       ] else
         [];
     in
-    [ cmdlineSrc chunkedseqSrc ] ++ docs;
+    [ cmdline chunkedseq ] ++ docs;
         
   buildPhase = if buildDocs then ''
     make -C doc sptl.pdf sptl.html
@@ -30,8 +30,8 @@ stdenv.mkDerivation rec {
 
   installPhase =
     let settingsFile = pkgs.writeText "settings.sh" ''
-      CMDLINE_HOME=${cmdlineSrc}/include
-      CHUNKEDSEQ_HOME=${chunkedseqSrc}/include
+      CMDLINE_HOME=${cmdline}/include
+      CHUNKEDSEQ_HOME=${chunkedseq}/include
     '';
     in
     ''
