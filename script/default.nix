@@ -1,18 +1,14 @@
 { pkgs   ? import <nixpkgs> {},
   stdenv ? pkgs.stdenv,
-  fetchurl,
-  chunkedseq,
+  sptlSrc ? ../.,
+  chunkedseq ? ../../chunkedseq,
   buildDocs ? false
 }:
 
 stdenv.mkDerivation rec {
-  name = "sptl-${version}";
-  version = "v0.1-alpha";
+  name = "sptl";
 
-  src = fetchurl {
-    url = "https://github.com/deepsea-inria/sptl/archive/${version}.tar.gz";
-    sha256 = "1bzzgadfcm4qfw6jl45rcfqkh39zmgr2fasp830fcfvzyyfc9phx";
-  };
+  src = sptlSrc;
 
   buildInputs =
     let docs =
