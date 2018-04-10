@@ -214,13 +214,8 @@ public:
   }
 
   void reset(size_type n, pointer p) {
-    if (std::is_fundamental<value_type>::value) {
-      sz = n;
-      ptr.reset(p);
-    } else {
-      free(p);
-      resize(n);
-    }
+    sz = n;
+    ptr.reset(p);
   }
 
   void reset(size_type n) {
