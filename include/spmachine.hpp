@@ -82,7 +82,9 @@ void die (const char *fmt, ...) {
 /* Hardware-specific configuration */
 
 namespace {
-  
+
+bool numa_alloc_interleaved_success = false;
+
 #ifdef SPTL_HAVE_HWLOC
 hwloc_topology_t topology;
 #endif
@@ -98,6 +100,7 @@ void initialize_hwloc(int nb_workers, bool numa_alloc_interleaved = true) {
     if (err < 0) {
       die("sptl: failed to set NUMA round-robin allocation policy\n");
     }
+    numa_alloc_interleaved_success = true;
   }
 #endif
 }
@@ -178,6 +181,7 @@ void _launch(int argc, char** argv, const Body& body) {
   numa_alloc_interleaved =
     deepsea::cmdline::parse_or_default_bool("numa_alloc_interleaved", numa_alloc_interleaved, false);
   initialize_hwloc(nb_proc, numa_alloc_interleaved);
+  printf("numa_alloc_interleaved_success %d\n", numa_alloc_interleaved_success);
 #if defined(SPTL_USE_CILK_PLUS_RUNTIME)
   // hack that seems to be required to initialize cilk runtime cleanly
   cilk_spawn ___silly_cilk(2);
