@@ -15,7 +15,7 @@ stdenv.mkDerivation rec {
     let docs =
       if buildDocs then [
         pkgs.pandoc
-        pkgs.texlive.combined.scheme-full
+        pkgs.texlive.combined.scheme-small
       ] else
         [];
     in
