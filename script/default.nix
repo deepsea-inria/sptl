@@ -3,7 +3,6 @@
   sptlSrc ? ../.,
   cmdline ? ../../cmdline,
   chunkedseq ? ../../chunkedseq,
-  pbench ? ../../pbench,
   buildDocs ? false
 }:
 
@@ -20,7 +19,7 @@ stdenv.mkDerivation rec {
       ] else
         [];
     in
-    [ cmdline chunkedseq pbench ] ++ docs;
+    [ cmdline chunkedseq ] ++ docs;
         
   buildPhase = if buildDocs then ''
     make -C doc sptl.pdf sptl.html
