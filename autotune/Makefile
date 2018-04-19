@@ -5,6 +5,7 @@ PBENCH_PATH=$(PACKAGE_PATH)/pbench
 CMDLINE_HOME=$(PACKAGE_PATH)/cmdline/include
 CHUNKEDSEQ_HOME=$(PACKAGE_PATH)/chunkedseq/include
 SPTL_HOME=$(PACKAGE_PATH)/sptl/include
+CUSTOM_MALLOC_PREFIX=
 
 ####################################################################
 # Makefile options
@@ -20,7 +21,7 @@ INCLUDE_FILES=$(wildcard $(CHUNKEDSEQ_HOME)/*.hpp) $(wildcard $(CMDLINE_HOME)/*.
 
 INCLUDE_DIRECTIVES=-I $(CHUNKEDSEQ_HOME) -I $(CMDLINE_HOME) -I $(SPTL_HOME)
 
-COMMON_PREFIX=-std=c++1y -O2 -march=native -DNDEBUG -DSPTL_TARGET_LINUX -Wno-subobject-linkage -lm -Wno-subobject-linkage -Wno-overflow
+COMMON_PREFIX=-std=c++1y -O2 -march=native -DNDEBUG -DSPTL_TARGET_LINUX -Wno-subobject-linkage -lm -Wno-subobject-linkage -Wno-overflow $(CUSTOM_MALLOC_PREFIX) 
 
 %.sptl: %.cpp $(INCLUDE_FILES)
 	g++ $(COMMON_PREFIX) $(INCLUDE_DIRECTIVES) -o $@ $<
@@ -29,4 +30,4 @@ COMMON_PREFIX=-std=c++1y -O2 -march=native -DNDEBUG -DSPTL_TARGET_LINUX -Wno-sub
 	g++ $(COMMON_PREFIX) $(INCLUDE_DIRECTIVES) -DSPTL_USE_SEQUENTIAL_ELISION_RUNTIME -o $@ $<
 
 clean: pbench_clean
-	rm -rf *.sptl *.sptl_elision _results *.txt nb_cores kappa
+	rm -rf *.sptl *.sptl_elision _results *.txt nb_cores kappa alpha

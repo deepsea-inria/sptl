@@ -3,6 +3,9 @@
   sptlSrc ? ../.,
   cmdline ? ../../cmdline,
   chunkedseq ? ../../chunkedseq,
+  pbench ? ../../pbench,
+  gperftools ? pkgs.gperftools,
+  gcc ? pkgs.gcc6,
   buildDocs ? false
 }:
 
@@ -19,14 +22,36 @@ stdenv.mkDerivation rec {
       ] else
         [];
     in
-    [ cmdline chunkedseq ] ++ docs;
-        
-  buildPhase = if buildDocs then ''
-    make -C doc sptl.pdf sptl.html
-  ''
-  else ''
-    # nothing to build
-  '';  
+    [ cmdline chunkedseq pkgs.ocaml pkgs.makeWrapper gperftools ] ++ docs;
+
+  configurePhase =
+    let settingsScript = pkgs.writeText "settings.sh" ''
+      PBENCH_PATH=./pbench/
+      CUSTOM_MALLOC_PREFIX=-ltcmalloc -L${gperftools}/lib
+      USE_CILK=1
+      CMDLINE_PATH=${cmdline}/include/
+      CHUNKEDSEQ_PATH=${chunkedseq}/include/
+    '';
+    in
+    ''
+    mkdir -p autotune-tmp
+    cp -r --no-preserve=mode ${pbench} autotune-tmp/pbench
+    cp ${settingsScript} autotune-tmp/settings.sh
+    cp autotune/autotune.ml autotune/Makefile autotune/spawnbench.cpp autotune-tmp
+    '';
+
+  buildPhase =
+    let doBuildDocs =
+      if buildDocs then ''
+        make -C doc sptl.pdf sptl.html
+      '' else ''
+        # nothing to build
+      '';
+    in
+    ''
+    make -C autotune-tmp autotune.pbench
+    make -C autotune-tmp spawnbench.sptl spawnbench.sptl_elision
+    '';
 
   installPhase =
     let settingsFile = pkgs.writeText "settings.sh" ''
@@ -42,6 +67,27 @@ stdenv.mkDerivation rec {
       cp ${settingsFile} $out/example/settings.sh
       mkdir -p $out/doc
       cp doc/sptl.* doc/Makefile $out/doc/
+      mkdir -p $out/autotune/
+      cp autotune-tmp/autotune.pbench autotune-tmp/timeout.out $out/autotune/
+      cp autotune-tmp/spawnbench.sptl autotune-tmp/spawnbench.sptl_elision $out/autotune/
+      cp script/get-nb-cores.sh $out/autotune/
+      pkgid=`basename $out`
+      mkdir -p $out/bin
+      cat >> $out/bin/autotune <<__EOT__
+      #!/usr/bin/env bash
+      mkdir -p /var/tmp/$pkgid
+      pushd /var/tmp/$pkgid
+      $out/autotune/autotune.pbench find-kappa -skip make
+      $out/autotune/autotune.pbench find-alpha -skip make
+      popd
+      __EOT__
+      chmod u+x $out/bin/autotune
+      wrapProgram $out/bin/autotune --prefix PATH ":" $out/autotune \
+       --prefix PATH ":" ${gcc}/bin \
+       --prefix LD_LIBRARY_PATH ":" ${gcc}/lib \
+       --prefix LD_LIBRARY_PATH ":" ${gcc}/lib64 \
+       --prefix LD_LIBRARY_PATH ":" ${gperftools}/lib \
+       --set TCMALLOC_LARGE_ALLOC_REPORT_THRESHOLD 100000000000 \
     '';
 
   meta = {
