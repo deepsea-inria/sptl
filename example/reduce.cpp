@@ -17,7 +17,8 @@ namespace sptl {
 } // end namespace
 
 int main(int argc, char** argv) {
-  deepsea::cmdline::set(argc, argv);
-  sptl::ex();
+  sptl::launch(argc, argv, [&] {
+    sptl::ex();
+  });
   return 0;
 }
