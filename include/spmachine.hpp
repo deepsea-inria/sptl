@@ -161,19 +161,11 @@ long ___silly_cilk (long n){
   
 } // end namespace
 
-#ifdef SPTL_USE_CUSTOM_PARAMETERS
+double kappa = 20.0;
 
-#include "spcustomparameters.hpp"
-  
-#else
-  
-double kappa = 100;
-
-double update_size_ratio = 1.2; // aka alpha
+double update_size_ratio = 1.8; // aka alpha
 
 int nb_proc = -1;
-  
-#endif
 
 template <class Body>
 void _launch(int argc, char** argv, const Body& body) {
