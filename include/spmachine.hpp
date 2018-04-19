@@ -5,6 +5,10 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fstream>
+#include <streambuf>
 #ifdef SPTL_HAVE_HWLOC
 #include <hwloc.h>
 #endif
@@ -167,6 +171,59 @@ double update_size_ratio = 1.8; // aka alpha
 
 int nb_proc = -1;
 
+bool file_exists(const std::string& name) {
+  std::ifstream f(name.c_str());
+  return f.good();
+}
+
+static
+void try_to_load_settings_from_autotune(std::string path_to_settings) {
+  enum { kappa_fn, alpha_fn, nb_cores_fn, nb_files }; 
+  const char* filenames[nb_files] = {
+    [kappa_fn]     = "kappa",
+    [alpha_fn]     = "alpha",
+    [nb_cores_fn]  = "nb_cores"
+  };
+  auto path_to = [&] (const char* fn) {
+    return path_to_settings + "/" + fn;
+  };
+  for (auto fn = filenames; fn != (filenames + nb_files); ++fn) {
+    if (! file_exists(path_to(*fn))) {
+      return;
+    }
+  }
+  {
+    std::ifstream t(path_to(filenames[kappa_fn]));
+    std::string str((std::istreambuf_iterator<char>(t)),
+		    std::istreambuf_iterator<char>());
+    kappa = std::stof(str);
+  }
+  {
+    std::ifstream t(path_to(filenames[alpha_fn]));
+    std::string str((std::istreambuf_iterator<char>(t)),
+		    std::istreambuf_iterator<char>());
+    update_size_ratio = std::stof(str);
+  }  
+  {
+    std::ifstream t(path_to(filenames[nb_cores_fn]));
+    std::string str((std::istreambuf_iterator<char>(t)),
+		    std::istreambuf_iterator<char>());
+    nb_proc = std::stoi(str);
+  }
+  return;
+}
+
+#ifndef SPTL_PATH_TO_AUTOTUNE_SETTINGS
+#define SPTL_PATH_TO_AUTOTUNE_SETTINGS "."
+#endif
+
+static
+void load_settings() {
+  try_to_load_settings_from_autotune(SPTL_PATH_TO_AUTOTUNE_SETTINGS);
+  kappa = deepsea::cmdline::parse_or_default_double("sptl_kappa", kappa);
+  update_size_ratio = deepsea::cmdline::parse_or_default_double("sptl_alpha", update_size_ratio);
+}
+
 template <class Body>
 void _launch(int argc, char** argv, const Body& body) {
 #if defined(SPTL_USE_FIBRIL)
@@ -175,8 +232,7 @@ void _launch(int argc, char** argv, const Body& body) {
   initialize_cpuinfo();
   callback::init();
   logging::buffer::init();
-  kappa = deepsea::cmdline::parse_or_default_double("sptl_kappa", kappa);
-  update_size_ratio = deepsea::cmdline::parse_or_default_double("sptl_alpha", update_size_ratio);
+  load_settings();
   bool numa_alloc_interleaved = (nb_proc == 1) ? false : true;
   numa_alloc_interleaved =
     deepsea::cmdline::parse_or_default_bool("numa_alloc_interleaved", numa_alloc_interleaved, false);

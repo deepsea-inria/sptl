@@ -66,8 +66,9 @@ namespace sptl {
 } // end namespace
 
 int main(int argc, char** argv) {
-  deepsea::cmdline::set(argc, argv);
-  uint64_t n = deepsea::cmdline::parse_or_default_int("n", 200000000);
-  sptl::bench(n);
+  sptl::launch(argc, argv, [&] {
+    uint64_t n = deepsea::cmdline::parse_or_default_int("n", 200000000);
+    sptl::bench(n);
+  });
   return 0;
 }
