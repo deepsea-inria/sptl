@@ -63,9 +63,9 @@ stdenv.mkDerivation rec {
       mkdir -p $out/autotune/
       cp autotune/autotune.pbench autotune/timeout.out \
           autotune/spawnbench.sptl autotune/spawnbench.sptl_elision $out/autotune/
-      cp script/get-nb-cores.sh $out/autotune/
-      pkgid=`basename $out`
       mkdir -p $out/bin
+      cp script/get-nb-cores.sh $out/bin/
+      pkgid=`basename $out`
       cat >> $out/bin/autotune <<__EOT__
       #!/usr/bin/env bash
       mkdir -p /var/tmp/$pkgid
@@ -77,6 +77,7 @@ stdenv.mkDerivation rec {
       chmod u+x $out/bin/autotune
       wrapProgram $out/bin/autotune --prefix PATH ":" $out/autotune \
        --prefix PATH ":" ${gcc}/bin \
+       --prefix PATH ":" $out/bin \
        --prefix LD_LIBRARY_PATH ":" ${gcc}/lib \
        --prefix LD_LIBRARY_PATH ":" ${gcc}/lib64 \
        --prefix LD_LIBRARY_PATH ":" ${gperftools}/lib \
