@@ -34,10 +34,8 @@ stdenv.mkDerivation rec {
     '';
     in
     ''
-    mkdir -p autotune-tmp
-    cp -r --no-preserve=mode ${pbench} autotune-tmp/pbench
-    cp ${settingsScript} autotune-tmp/settings.sh
-    cp autotune/autotune.ml autotune/Makefile autotune/spawnbench.cpp autotune-tmp
+    cp -r --no-preserve=mode ${pbench} autotune/pbench
+    cp ${settingsScript} autotune/settings.sh
     '';
 
   buildPhase =
@@ -49,8 +47,7 @@ stdenv.mkDerivation rec {
       '';
     in
     ''
-    make -C autotune-tmp autotune.pbench
-    make -C autotune-tmp spawnbench.sptl spawnbench.sptl_elision
+    make -C autotune autotune.pbench spawnbench.sptl spawnbench.sptl_elision
     '';
 
   installPhase =
@@ -68,8 +65,8 @@ stdenv.mkDerivation rec {
       mkdir -p $out/doc
       cp doc/sptl.* doc/Makefile $out/doc/
       mkdir -p $out/autotune/
-      cp autotune-tmp/autotune.pbench autotune-tmp/timeout.out $out/autotune/
-      cp autotune-tmp/spawnbench.sptl autotune-tmp/spawnbench.sptl_elision $out/autotune/
+      cp autotune/autotune.pbench autotune/timeout.out \
+          autotune/spawnbench.sptl autotune/spawnbench.sptl_elision $out/autotune/
       cp script/get-nb-cores.sh $out/autotune/
       pkgid=`basename $out`
       mkdir -p $out/bin
