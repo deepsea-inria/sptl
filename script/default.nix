@@ -17,16 +17,14 @@ stdenv.mkDerivation rec {
   buildInputs =
     let docs =
       if buildDocs then [
-        pkgs.pandoc
-        pkgs.texlive.combined.scheme-small
-      ] else
-        [];
+        pkgs.pandoc pkgs.texlive.combined.scheme-small
+      ] else [];
     in
     [ cmdline chunkedseq pkgs.ocaml pkgs.makeWrapper gperftools ] ++ docs;
 
   configurePhase =
     let settingsScript = pkgs.writeText "settings.sh" ''
-      PBENCH_PATH=./pbench/
+      PBENCH_PATH=../pbench/
       CUSTOM_MALLOC_PREFIX=-ltcmalloc -L${gperftools}/lib
       USE_CILK=1
       CMDLINE_PATH=${cmdline}/include/
@@ -34,7 +32,7 @@ stdenv.mkDerivation rec {
     '';
     in
     ''
-    cp -r --no-preserve=mode ${pbench} autotune/pbench
+    cp -r --no-preserve=mode ${pbench} pbench
     cp ${settingsScript} autotune/settings.sh
     '';
 
@@ -42,9 +40,7 @@ stdenv.mkDerivation rec {
     let doBuildDocs =
       if buildDocs then ''
         make -C doc sptl.pdf sptl.html
-      '' else ''
-        # nothing to build
-      '';
+      '' else "";
     in
     ''
     make -C autotune autotune.pbench spawnbench.sptl spawnbench.sptl_elision
