@@ -27,8 +27,9 @@ stdenv.mkDerivation rec {
       PBENCH_PATH=../pbench/
       CUSTOM_MALLOC_PREFIX=-ltcmalloc -L${gperftools}/lib
       USE_CILK=1
-      CMDLINE_PATH=${cmdline}/include/
-      CHUNKEDSEQ_PATH=${chunkedseq}/include/
+      CMDLINE_HOME=${cmdline}/include/
+      CHUNKEDSEQ_HOME=${chunkedseq}/include/
+      SPTL_HOME=${sptlSrc}/include
     '';
     in
     ''
