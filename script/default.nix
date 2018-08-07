@@ -6,6 +6,7 @@
   pbench ? ../../pbench,
   gperftools ? pkgs.gperftools,
   gcc ? pkgs.gcc6,
+  hwloc ? pkgs.hwloc,
   buildDocs ? false
 }:
 
@@ -66,6 +67,7 @@ stdenv.mkDerivation rec {
           autotune/spawnbench.sptl autotune/spawnbench.sptl_elision $out/autotune/
       mkdir -p $out/bin
       cp script/get-nb-cores.sh $out/bin/
+      wrapProgram $out/bin/get-nb-cores.sh --prefix PATH ":" ${hwloc}/bin
       pkgid=`basename $out`
       cat >> $out/bin/autotune <<__EOT__
       #!/usr/bin/env bash
