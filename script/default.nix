@@ -69,6 +69,7 @@ stdenv.mkDerivation rec {
       pkgid=`basename $out`
       cat >> $out/bin/autotune <<__EOT__
       #!/usr/bin/env bash
+      rm -rf /var/tmp/$pkgid
       mkdir -p /var/tmp/$pkgid
       pushd /var/tmp/$pkgid
       $out/autotune/autotune.pbench find-kappa -skip make
