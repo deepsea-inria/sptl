@@ -237,7 +237,7 @@ void _launch(int argc, char** argv, const Body& body) {
   numa_alloc_interleaved =
     deepsea::cmdline::parse_or_default_bool("numa_alloc_interleaved", numa_alloc_interleaved, false);
   initialize_hwloc(nb_proc, numa_alloc_interleaved);
-  printf("numa_alloc_interleaved_success %d\n", numa_alloc_interleaved_success);
+  //  printf("numa_alloc_interleaved_success %d\n", numa_alloc_interleaved_success);
 #if defined(SPTL_USE_CILK_PLUS_RUNTIME)
   // hack that seems to be required to initialize cilk runtime cleanly
   cilk_spawn ___silly_cilk(2);
