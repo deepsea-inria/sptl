@@ -1,0 +1,1 @@
+#define SPTL_PATH_TO_AUTOTUNE_SETTINGS "."

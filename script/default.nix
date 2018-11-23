@@ -78,6 +78,10 @@ stdenv.mkDerivation rec {
       $out/autotune/autotune.pbench find-alpha -skip make
       popd
       __EOT__
+      cat >> $out/include/spautotune.hpp <<__EOT__
+      #undef SPTL_PATH_TO_AUTOTUNE_SETTINGS
+      #define SPTL_PATH_TO_AUTOTUNE_SETTINGS "/var/tmp/$pkgid"
+      __EOT__
       chmod u+x $out/bin/autotune
       wrapProgram $out/bin/autotune --prefix PATH ":" $out/autotune \
        --prefix PATH ":" ${gcc}/bin \

@@ -30,6 +30,7 @@ extern "C" {
 #include "cmdline.hpp"
 #include "spcallback.hpp"
 #include "splogging.hpp"
+#include "spautotune.hpp"
 
 #ifndef _SPTL_MACHINE_H_
 #define _SPTL_MACHINE_H_
@@ -212,10 +213,6 @@ void try_to_load_settings_from_autotune(std::string path_to_settings) {
   }
   return;
 }
-
-#ifndef SPTL_PATH_TO_AUTOTUNE_SETTINGS
-#define SPTL_PATH_TO_AUTOTUNE_SETTINGS "."
-#endif
 
 static
 void load_settings() {
