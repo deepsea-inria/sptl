@@ -7,6 +7,7 @@
   gperftools ? pkgs.gperftools,
   gcc ? pkgs.gcc6,
   hwloc ? pkgs.hwloc,
+  ocaml ? pkgs.ocaml,
   buildDocs ? false
 }:
 
@@ -21,7 +22,7 @@ stdenv.mkDerivation rec {
         pkgs.pandoc pkgs.texlive.combined.scheme-small
       ] else [];
     in
-    [ cmdline chunkedseq pkgs.ocaml pkgs.makeWrapper gperftools gcc ] ++ docs;
+    [ cmdline chunkedseq ocaml pkgs.makeWrapper gperftools gcc ] ++ docs;
 
   configurePhase =
     let settingsScript = pkgs.writeText "settings.sh" ''
