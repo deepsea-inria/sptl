@@ -46,6 +46,7 @@ stdenv.mkDerivation rec {
       '' else "";
     in
     ''
+    ${doBuildDocs}
     make -C autotune autotune.pbench spawnbench.sptl spawnbench.sptl_elision
     '';
 
