@@ -71,19 +71,21 @@ stdenv.mkDerivation rec {
       cp script/get-nb-cores.sh $out/bin/
       wrapProgram $out/bin/get-nb-cores.sh --prefix PATH ":" ${hwloc}/bin
       pkgid=`basename $out`
+      autotunerespath=/var/tmp/$pkgid
       cat >> $out/bin/autotune <<__EOT__
       #!/usr/bin/env bash
-      rm -rf /var/tmp/$pkgid
-      mkdir -p /var/tmp/$pkgid
-      pushd /var/tmp/$pkgid
+      rm -rf $autotunerespath
+      mkdir -p $autotunerespath
+      pushd $autotunerespath
       $out/autotune/autotune.pbench find-kappa -skip make
       $out/autotune/autotune.pbench find-alpha -skip make
       popd
       __EOT__
       cat >> $out/include/spautotune.hpp <<__EOT__
       #undef SPTL_PATH_TO_AUTOTUNE_SETTINGS
-      #define SPTL_PATH_TO_AUTOTUNE_SETTINGS "/var/tmp/$pkgid"
+      #define SPTL_PATH_TO_AUTOTUNE_SETTINGS "$autotunerespath"
       __EOT__
+      ln -s $autotunerespath $out/autotune-results
       chmod u+x $out/bin/autotune
       wrapProgram $out/bin/autotune --prefix PATH ":" $out/autotune \
        --prefix PATH ":" ${gcc}/bin \
