@@ -43,7 +43,7 @@ void _spguard(estimator& estim,
               const Par_body& par_body,
               const Seq_body& seq_body) {
 #ifdef SPTL_USE_SEQUENTIAL_ELISION_RUNTIME
-  if ((complexity_type)complexity() < 10000.0) {
+  if ((complexity_type)complexity() < 10000) {
     seq_body();
   } else {
     par_body();
@@ -62,7 +62,7 @@ void _spguard(estimator& estim,
     auto elapsed = time::now() - t;
     estim.report(comp, elapsed);
     is_small.mine() = false;
-    logging::buffer::push_sequential_run(estim.get_name(), comp, elapsed);
+    logging::buffer::push_sequential_run(estim.get_name(), (float)comp, elapsed);
   } else {
     auto t_before = total_now(timer.mine());
     auto t_body = measured_run(par_body);
