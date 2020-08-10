@@ -1,9 +1,11 @@
 { pkgs   ? import <nixpkgs> {},
   stdenv ? pkgs.stdenv,
-  sptlSrc ? ../.,
-  cmdline ? ../../cmdline,
-  chunkedseq ? ../../chunkedseq,
-  pbench ? ../../pbench,
+  sources ? import ./default-sources.nix,
+  sptlSrc ? sources.sptlSrc,
+  cmdline ? sources.cmdline,
+  chunkedseq ? sources.chunkedseq,
+  buildDunePackage ? pkgs.ocamlPackages.buildDunePackage,
+  benchScript ? import sources.benchScript { sources = sources; },
   gperftools ? pkgs.gperftools,
   gcc ? pkgs.gcc6,
   hwloc ? pkgs.hwloc,
@@ -26,7 +28,6 @@ stdenv.mkDerivation rec {
 
   configurePhase =
     let settingsScript = pkgs.writeText "settings.sh" ''
-      PBENCH_PATH=../pbench/
       CUSTOM_MALLOC_PREFIX=-ltcmalloc -L${gperftools}/lib
       USE_CILK=1
       CMDLINE_HOME=${cmdline}/include/
@@ -35,7 +36,6 @@ stdenv.mkDerivation rec {
     '';
     in
     ''
-    cp -r --no-preserve=mode ${pbench} pbench
     cp ${settingsScript} autotune/settings.sh
     '';
 
@@ -47,7 +47,7 @@ stdenv.mkDerivation rec {
     in
     ''
     ${doBuildDocs}
-    make -C autotune autotune.pbench spawnbench.sptl spawnbench.sptl_elision
+    make -j -C autotune spawnbench.sptl spawnbench.sptl_elision
     '';
 
   installPhase =
@@ -65,11 +65,9 @@ stdenv.mkDerivation rec {
       mkdir -p $out/doc
       cp doc/sptl.* doc/Makefile $out/doc/
       mkdir -p $out/autotune/
-      cp autotune/autotune.pbench autotune/timeout.out \
-          autotune/spawnbench.sptl autotune/spawnbench.sptl_elision $out/autotune/
+      cp autotune/spawnbench.sptl autotune/spawnbench.sptl_elision $out/autotune/
+      cp ${benchScript}/autotune $out/autotune/autotune.pbench
       mkdir -p $out/bin
-      cp script/get-nb-cores.sh $out/bin/
-      wrapProgram $out/bin/get-nb-cores.sh --prefix PATH ":" ${hwloc}/bin
       pkgid=`basename $out`
       autotunerespath=/var/tmp/$pkgid
       cat >> $out/bin/autotune <<__EOT__
@@ -87,7 +85,8 @@ stdenv.mkDerivation rec {
       __EOT__
       ln -s $autotunerespath $out/autotune-results
       chmod u+x $out/bin/autotune
-      wrapProgram $out/bin/autotune --prefix PATH ":" $out/autotune \
+      wrapProgram $out/bin/autotune \
+       --prefix PATH ":" $out/autotune \
        --prefix PATH ":" ${gcc}/bin \
        --prefix PATH ":" $out/bin \
        --prefix LD_LIBRARY_PATH ":" ${gcc}/lib \
